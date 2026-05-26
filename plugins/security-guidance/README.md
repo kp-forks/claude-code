@@ -67,7 +67,7 @@ Drop a `claude-security-guidance.md` in any of:
 - `<project>/.claude/claude-security-guidance.md` — project rules, intended to be committed
 - `<project>/.claude/claude-security-guidance.local.md` — local overrides, intended to be `.gitignore`'d
 
-All three are loaded and concatenated on every review. If the combined size exceeds the prompt budget, project-local rules are kept and user-wide rules are dropped first. Example:
+All three are loaded and concatenated into the LLM diff review's prompt in the order user → project → project-local. If the combined size exceeds the 8 KB prompt budget, the tail is truncated, so user-wide rules are kept and project-local rules are dropped first. The agentic commit reviewer (layer 3) does not currently read this file. Example:
 
 ```markdown
 # Acme security rules
