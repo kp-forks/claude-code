@@ -20,7 +20,8 @@
     <title>Claude Code v2.1.169</title>
     <link rel="alternate" type="text/html" href="https://github.com/anthropics/claude-code/releases/tag/v2.1.169"/>
     <updated>2026-06-08T21:57:10Z</updated>
-    <content type="html">&lt;p&gt;• Added --safe-mode flag (and CLAUDE_CODE_SAFE_MODE) to start Claude Code with all customizations (CLAUDE.md, plugins, skills, hooks, MCP servers) disabled for troubleshooting&lt;/p&gt;
+    <content type="html">&lt;p&gt;• Self-hosted runner: added a post-session lifecycle hook that runs after the session ends and before the workspace is deleted, so you can snapshot uncommitted work or export logs; also made the child-process SIGTERM→SIGKILL window configurable (default unchanged at 5s)&lt;/p&gt;
+&lt;p&gt;• Added --safe-mode flag (and CLAUDE_CODE_SAFE_MODE) to start Claude Code with all customizations (CLAUDE.md, plugins, skills, hooks, MCP servers) disabled for troubleshooting&lt;/p&gt;
 &lt;p&gt;• Added /cd command to move a session to a new working directory without breaking the prompt cache mid-session&lt;/p&gt;
 &lt;p&gt;• Added a disableBundledSkills setting and CLAUDE_CODE_DISABLE_BUNDLED_SKILLS environment variable to hide bundled skills, workflows, and built-in slash commands from the model&lt;/p&gt;
 &lt;p&gt;• Fixed Up/Down arrows jumping to command history past the wrapped rows of a long input line — they now move through each visual row first, and history recall enters at the near edge&lt;/p&gt;
