@@ -12,7 +12,8 @@
     <title>Claude Code v2.1.198</title>
     <link rel="alternate" type="text/html" href="https://github.com/anthropics/claude-code/releases/tag/v2.1.198"/>
     <updated>2026-07-01T20:45:29Z</updated>
-    <content type="html">&lt;p&gt;• Claude in Chrome is now generally available&lt;/p&gt;
+    <content type="html">&lt;p&gt;• Subagents now run in the background by default, so Claude keeps working while they run and is notified when they finish (previously a gradual rollout)&lt;/p&gt;
+&lt;p&gt;• Claude in Chrome is now generally available&lt;/p&gt;
 &lt;p&gt;• Added background agent notifications in claude agents — sessions that need input or finish now fire the Notification hook (agent_needs_input / agent_completed)&lt;/p&gt;
 &lt;p&gt;• Added /dataviz skill for chart and dashboard design guidance with a runnable color-palette validator&lt;/p&gt;
 &lt;p&gt;• Gateway: added Claude Platform on AWS (anthropicAws) as an upstream provider; model-not-found responses now advance the failover chain&lt;/p&gt;
