@@ -5,6 +5,7 @@ import type { RenderElement } from 'claude-code'
 
 import type { Kit } from '../kit'
 import Layout from '../layout'
+import Sections from '../sections'
 import { codeBlocksOf } from './code-blocks-of'
 import type { DetailModel } from './detail-model'
 import { HUNK_DIVIDER } from './hunk-divider'
@@ -13,7 +14,8 @@ import { placeholderOf } from './placeholder-of'
 
 /**
  * The selected file under the list: its bold path and asides, each name
- * cut from its start to the width, the ask Button, the body.
+ * cut from its start to the width, the ask Button, the built-in's dim rule
+ * under them, the body.
  *
  * The body is a placeholder, or the hunks as the engine's diff `Code` blocks
  * (codeBlocksOf) named by the path, a dim divider where two meet at a hunk;
@@ -81,6 +83,7 @@ export function detailView(
             ...ask,
           ]}
         </Box>,
+        Sections.divider(kit),
         ...(placeholder ? notes : hunks),
         ...footer,
       ]}

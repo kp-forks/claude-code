@@ -16,7 +16,8 @@ import Layout from '../../layout'
  * sit where the built-in centers them (half the spare rows above, rounded
  * down; each wrapped line centered on its own), the pickers right under
  * them and the pre-session line at the foot; otherwise it all stacks from
- * the top.
+ * the top, the pickers on the blank row the built-in leaves above the
+ * pre-session line (that blank row itself when there are none).
  *
  * @param kit the elements, the width, the body's rows
  * @param pane the header block, the message's lines, the pickers, the
@@ -41,6 +42,10 @@ export function messagePaneOf(
   const drawn = lines.map(line => <Text dimColor>{line}</Text>)
   const controlRows = controls === null ? [] : [controls]
   const earlierRows = earlier === null ? [] : [earlier]
+  const aboveEarlier =
+    controlRows.length > 0 || earlierRows.length === 0
+      ? controlRows
+      : [<Box height={1} />]
   const middleRows = kit.rows - top.length - 1 - (earlier === null ? 0 : 3)
   const above = Math.floor((middleRows - lines.length) / 2)
   const isCentered =
@@ -54,7 +59,7 @@ export function messagePaneOf(
           ...top,
           <Box height={1} />,
           ...drawn,
-          ...controlRows,
+          ...aboveEarlier,
           ...earlierRows,
           ...rest,
         ]}

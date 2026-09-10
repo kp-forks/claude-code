@@ -19,7 +19,8 @@ import { messagePaneOf } from './message-pane-of'
  * body at a time): header, base line, todo bar, pickers, rows, detail.
  *
  * The tests-and-generated toggle sits above the rows; the elision count, the
- * withheld-untracked note, the pre-session line and rows below them; the
+ * withheld-untracked note, the pre-session line and rows below them, a blank
+ * row above that line and above its rows as the built-in leaves; the
  * selected file last. With no rows to list, the loading line, the empty
  * state or the too-many and only-hidden lines take the body instead
  * (messagePaneOf), the header keeping only the close.
@@ -90,7 +91,11 @@ export function currentPane(
         onPress: kit.actions.togglePreSession,
       })
     : null
-  const earlierRows = model.isPreSessionShown ? partition.preSession : []
+  const earlierFiles = model.isPreSessionShown ? partition.preSession : []
+  const earlierRows =
+    earlierFiles.length === 0
+      ? []
+      : [<Box height={1} />, ...earlierFiles.map(rowOf)]
   const isUntrackedNoted = data?.isUntrackedWithheld === true && !empty
   const listed = listBodyOf(kit, { data, partition, totals, empty })
   const notes = listed.filter(line => typeof line === 'string')
@@ -136,7 +141,7 @@ export function currentPane(
       message,
       controls: Sections.controlsView(kit, model),
       earlier: earlierToggle,
-      rest: [...earlierRows.map(rowOf), ...detail],
+      rest: [...earlierRows, ...detail],
     })
   }
 
@@ -153,8 +158,9 @@ export function currentPane(
         ),
         notShownNote,
         untrackedNote,
+        hasEarlier ? <Box height={1} /> : null,
         earlierToggle,
-        ...earlierRows.map(rowOf),
+        ...earlierRows,
         ...detail,
       ])}
     </Box>
