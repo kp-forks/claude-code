@@ -33,4 +33,10 @@ export type PaneActions = {
    * Arms this file's diff for the next prompt, or disarms it.
    */
   toggleAsk: (path: string) => void
+
+  /**
+   * Closes the pane as `/diff` closes it, the choice kept for the next
+   * first edit.
+   */
+  close: () => void
 }

@@ -400,6 +400,11 @@ export function register(on: On) {
 
       arm(engine, path)
     },
+    close: () => {
+      void closePane(engine)
+        .then(() => engine.storeSet(Names.STORE_OPEN_KEY, false))
+        .catch(() => undefined)
+    },
   })
 
   function arm(engine: Host, path: string) {
