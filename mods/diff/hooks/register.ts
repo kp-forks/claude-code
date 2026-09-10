@@ -488,6 +488,7 @@ export function register(on: On) {
         columns: e.props.bodyColumns,
       },
       model,
+      e.props.placement,
     )
   })
 

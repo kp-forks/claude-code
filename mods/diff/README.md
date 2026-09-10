@@ -7,7 +7,10 @@ runs shell commands and finishes turns, and while it is open it polls the
 repository's HEAD so a commit or checkout made elsewhere shows too. The
 first successful edit of a session opens the pane by itself where the
 terminal is wide enough (144 columns when the person never chose, 110 when
-they kept it open before; a person who closed it is left alone). A file's
+they kept it open before; a person who closed it is left alone). Where the
+surface seats the pane inline instead of beside the transcript (a terminal
+under 110 columns), it shows only the built-in's line asking for a wider
+terminal. A file's
 ask button arms that file: its hunks ride the next prompt as context, once.
 
 The pane compares the working tree against HEAD, split at the session's
