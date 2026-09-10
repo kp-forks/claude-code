@@ -24,6 +24,8 @@ import Views from './views'
  * `session.start` registers `/diff` (refused while the built-in holds it),
  * binds the host every pinned backend reads through, and pins the backend
  * (backendOf): one probe in flight, asked again on `/diff` until git answers.
+ * On a terminal narrower than the built-in panel shows on, `/diff` answers
+ * the built-in's resize line and opens nothing (paneToggleOf).
  *
  * @param on the engine's registrar
  */
@@ -513,11 +515,17 @@ export function register(on: On) {
       }
     }
 
-    const isOpening =
-      PaneToggle.paneToggleOf({
-        isBelievedOpen: isPaneOpen,
-        wasDrawnWhenProbed: isPaneOpen && (await wasDrawnWhenProbed(host)),
-      }) === 'open'
+    const toggle = PaneToggle.paneToggleOf({
+      isBelievedOpen: isPaneOpen,
+      wasDrawnWhenProbed: isPaneOpen && (await wasDrawnWhenProbed(host)),
+      columns,
+    })
+
+    if (toggle === 'too-narrow') {
+      return { text: Names.RESIZE_TERMINAL_TEXT }
+    }
+
+    const isOpening = toggle === 'open'
     await (isOpening ? openPane(host, 'manual') : closePane(host))
     await host.storeSet(Names.STORE_OPEN_KEY, isOpening).catch(() => undefined)
 
