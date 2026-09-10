@@ -467,7 +467,7 @@ export function register(on: On) {
     const { Box, Text, Button, Select } = await $.ui.resolve(e)
     wasDrawnSinceProbe = true
     columns = e.viewport?.columns ?? columns
-    model = { ...model, isFocused: e.props.focused }
+    model = { ...model, isFocused: e.props.isFocused }
 
     return Views.paneView(
       {
