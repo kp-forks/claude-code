@@ -1,7 +1,7 @@
 import type { BackendProbe } from './types'
 
 /**
- * The plugin's backend-extension point: probes for version-control systems
+ * Where a host adds backends to the plugin: probes for version-control systems
  * other than git, consulted in insertion order before git (backendOf); a
  * probe answers null wherever git should govern. Empty as shipped, so the
  * plugin reads git alone. A host
