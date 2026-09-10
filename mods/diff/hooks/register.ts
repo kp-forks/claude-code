@@ -590,17 +590,23 @@ export function register(on: On) {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    const result = await next(e)
     const asked = armed
 
-    if (!host || !asked || result.drop !== undefined) {
-      return result
+    if (!host || !asked) {
+      return next(e)
     }
 
-    disarm(host)
-    redraw(host)
-    Record.recorderOf(host).asked(asked.lines)
+    const result = await next({
+      ...e,
+      context: [...(e.context ?? []), asked.text],
+    })
 
-    return { ...result, context: [...(result.context ?? []), asked.text] }
+    if (result.drop === undefined && armed === asked) {
+      disarm(host)
+      redraw(host)
+      Record.recorderOf(host).asked(asked.lines)
+    }
+
+    return result
   })
 }
