@@ -5,22 +5,19 @@ import type { RenderElement } from 'claude-code'
 
 import type { Kit } from '../kit'
 import Layout from '../layout'
+import { codeBlocksOf } from './code-blocks-of'
 import type { DetailModel } from './detail-model'
-import { gutterCellsOf } from './gutter-cells-of'
-import { hunkBody } from './hunk-body'
-import { linesOf } from './lines-of'
-import { MARKER_CELLS } from './marker-cells'
-import { maxRowsOf } from './max-rows-of'
+import { HUNK_DIVIDER } from './hunk-divider'
+import { MAX_CODE_CHARS } from './max-code-chars'
 import { placeholderOf } from './placeholder-of'
-import { rowsOf } from './rows-of'
 
 /**
- * The selected file under the list: its bold path and asides (renamed
- * from, untracked, truncated) cut to the width, the ask Button, the body.
+ * The selected file under the list: its bold path and asides, each name
+ * cut from its start to the width, the ask Button, the body.
  *
- * The body is a placeholder or the hunks (cut to the rows the body's char
- * and node budgets hold, maxRowsOf), then the footer; the gutter fits the
- * largest number.
+ * The body is a placeholder, or the hunks as the engine's diff `Code` blocks
+ * (codeBlocksOf) named by the path, a dim divider where two meet at a hunk;
+ * then the footer when anything was cut.
  *
  * @param kit the elements and the width
  * @param detail the selected file
@@ -32,18 +29,13 @@ export function detailView(
   detail: DetailModel,
   onToggleAsk: () => void,
 ): RenderElement {
-  const { Box, Text, Button } = kit.ui
+  const { Box, Text, Button, Code } = kit.ui
   const placeholder = placeholderOf(detail)
-  const hunks = placeholder ? [] : (detail.body?.hunks ?? [])
-  const lines = linesOf(hunks)
-  const gutterCells = gutterCellsOf(lines)
-  const contentCells = Math.max(1, kit.columns - gutterCells - MARKER_CELLS)
-  const rows = placeholder ? [] : rowsOf(lines, contentCells)
-  const cells = { gutterCells, contentCells }
-  const maxRows = maxRowsOf(rows, cells)
-  const isTruncated = detail.body?.isTruncated === true || rows.length > maxRows
-  const nameOf = (path: string) =>
-    Layout.truncateStart(Layout.sanitizeName(path), kit.columns)
+  const code = codeBlocksOf(placeholder ? [] : (detail.body?.hunks ?? []))
+  const isTruncated = detail.body?.isTruncated === true || code.isTruncated
+  const path = Layout.sanitizeName(detail.path).slice(-MAX_CODE_CHARS)
+  const nameOf = (name: string) =>
+    Layout.truncateStart(Layout.sanitizeName(name), kit.columns)
   const renamedFrom =
     detail.renamedFrom === null ? null : nameOf(detail.renamedFrom)
   const asides = [
@@ -52,14 +44,6 @@ export function detailView(
     isTruncated ? 'truncated' : null,
   ].filter(word => word !== null)
   const aside = asides.length === 0 ? '' : ` (${asides.join(', ')})`
-  const notes = (placeholder ?? []).map(line => (
-    <Text dimColor italic wrap="wrap">
-      {line}
-    </Text>
-  ))
-  const body = placeholder
-    ? notes
-    : [hunkBody(kit.ui, rows.slice(0, maxRows), cells)]
   const ask = placeholder
     ? []
     : [
@@ -74,19 +58,32 @@ export function detailView(
         </Text>,
       ]
     : []
+  const notes = (placeholder ?? []).map(line => (
+    <Text dimColor italic wrap="wrap">
+      {line}
+    </Text>
+  ))
+  const hunks = code.blocks.flatMap(block => [
+    ...(block.hasDivider ? [<Text dimColor>{HUNK_DIVIDER}</Text>] : []),
+    <Code source={block.source} format="diff" path={path} />,
+  ])
 
-  const header = (
-    <Box flexDirection="row">
+  return (
+    <Box flexDirection="column">
       {[
-        <Text bold wrap="truncate-start">
-          {nameOf(detail.path)}
-        </Text>,
-        <Text dimColor>{aside}</Text>,
-        <Box flexGrow={1} />,
-        ...ask,
+        <Box flexDirection="row">
+          {[
+            <Text bold wrap="truncate-start">
+              {nameOf(detail.path)}
+            </Text>,
+            <Text dimColor>{aside}</Text>,
+            <Box flexGrow={1} />,
+            ...ask,
+          ]}
+        </Box>,
+        ...(placeholder ? notes : hunks),
+        ...footer,
       ]}
     </Box>
   )
-
-  return <Box flexDirection="column">{[header, ...body, ...footer]}</Box>
 }
