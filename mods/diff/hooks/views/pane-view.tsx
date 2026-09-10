@@ -3,6 +3,7 @@
 /* @jsxFrag Fragment */
 import type { RenderElement } from 'claude-code'
 
+import Limits from '../limits'
 import Names from '../names'
 import PaneState from '../pane-state'
 import { currentPane } from './current-pane'
@@ -15,7 +16,9 @@ import { turnPane } from './turn-pane'
  * the picked turn's edits while that turn still exists (a rewind drops it).
  *
  * Seated inline (no room beside the transcript), only the built-in's line
- * asking for a wider terminal, as the built-in shows no panel there.
+ * asking for a wider terminal, as the built-in shows no panel there. Docked,
+ * the body keeps the built-in's blank row above the header and blank last
+ * column, so its rows sit and wrap where the built-in's do.
  *
  * @param kit the elements, the handlers, the width
  * @param model the pane's state
@@ -35,5 +38,13 @@ export function paneView(
     return <Box>{Sections.dimNote(kit, Names.RESIZE_TERMINAL_TEXT)}</Box>
   }
 
-  return isCurrent ? currentPane(kit, model) : turnPane(kit, model, turn)
+  const right = Limits.PANE_RIGHT_PAD_COLUMNS
+  const top = Limits.PANE_TOP_PAD_ROWS
+  const inset: Kit = { ...kit, columns: Math.max(1, kit.columns - right) }
+
+  return (
+    <Box flexDirection="column" paddingTop={top} paddingRight={right}>
+      {isCurrent ? currentPane(inset, model) : turnPane(inset, model, turn)}
+    </Box>
+  )
 }

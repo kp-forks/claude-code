@@ -5,5 +5,6 @@ export * from './max-files-for-details.js'
 export * from './max-lines-per-file.js'
 export * from './max-listed-directories.js'
 export * from './max-untracked-probes.js'
+export * from './pane-top-pad-rows.js'
 
 export * as default from '.'
