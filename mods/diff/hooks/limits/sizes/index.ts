@@ -6,5 +6,6 @@ export * from './max-lines-per-file.js'
 export * from './max-listed-directories.js'
 export * from './max-untracked-probes.js'
 export * from './pane-top-pad-rows.js'
+export * from './prompt-context-max-chars.js'
 
 export * as default from '.'

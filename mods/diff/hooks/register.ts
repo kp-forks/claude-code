@@ -40,6 +40,7 @@ export function register(on: On) {
   let hasShownOnce = false
   let wasDrawnSinceProbe = false
   let armed: Ask.ArmedAsk | null = null
+  let carrying: Ask.ArmedAsk | null = null
   let isRefreshing = false
   let isRefreshQueued = false
   let generation = 0
@@ -592,21 +593,45 @@ export function register(on: On) {
   on('prompt.submit', async ($, e, next) => {
     const asked = armed
 
-    if (!host || !asked) {
+    if (!host || !asked || carrying === asked) {
       return next(e)
     }
 
-    const result = await next({
-      ...e,
-      context: [...(e.context ?? []), asked.text],
-    })
+    const context = e.context ?? []
+    const used = context.reduce((sum, entry) => sum + entry.length, 0)
+    const text = Ask.fittedAskTextOf(
+      asked.text,
+      Limits.PROMPT_CONTEXT_MAX_CHARS - used,
+    )
 
-    if (result.drop === undefined && armed === asked) {
+    if (text === undefined) {
       disarm(host)
+      host.status(
+        `${Views.sanitizeName(asked.path)}'s diff did not fit in the prompt ` +
+          `and was dropped`,
+      )
       redraw(host)
-      Record.recorderOf(host).asked(asked.lines)
+
+      return next(e)
     }
 
-    return result
+    carrying = asked
+
+    try {
+      const result = await next({ ...e, context: [...context, text] })
+
+      if (result.drop === undefined) {
+        Record.recorderOf(host).asked(asked.lines)
+
+        if (armed === asked) {
+          disarm(host)
+          redraw(host)
+        }
+      }
+
+      return result
+    } finally {
+      carrying = null
+    }
   })
 }
