@@ -21,17 +21,16 @@ import Views from './views'
  * Registers the diff pane: `/diff` once the built-in stands down, the
  * pane's drawing and refresh, its opening on Claude's first edit, the ask.
  *
- * `session.start` binds the engine once, registers the command (refused
- * because the built-in holds it, the plugin does nothing) and pins the
- * backend holding the session's directory (probed again on `/diff` and
- * first edit until found): what an installed backend probe finds, else git
- * (backendOf).
+ * `session.start` registers `/diff` (refused while the built-in holds it),
+ * binds the host every pinned backend reads through, and pins the backend
+ * (backendOf): one probe in flight, asked again on `/diff` until git answers.
  *
  * @param on the engine's registrar
  */
 export function register(on: On) {
   let host: Host | null = null
   let backend: Backend.Backend | null = null
+  let probing: Promise<boolean> | null = null
   let sessionStartMs = 0
   let isPaneOpen = false
   let hasAutoOpened = false
@@ -76,19 +75,37 @@ export function register(on: On) {
     },
   })
 
-  async function pinBackend(engine: Host): Promise<void> {
+  function pinBackend(engine: Host): Promise<boolean> {
     if (backend) {
-      return
+      return Promise.resolve(true)
     }
 
+    probing ??= probeBackend(engine).finally(() => {
+      probing = null
+    })
+
+    return probing
+  }
+
+  async function probeBackend(engine: Host): Promise<boolean> {
+    const asked = { isAnswered: true }
+    const probeHost = backendHostOf(engine)
     const probed = await Backend.backendOf(
-      backendHostOf(engine),
+      {
+        ...probeHost,
+        run: (argv, init) =>
+          probeHost.run(argv, init).catch((error: unknown) => {
+            asked.isAnswered &&=
+              argv[0] !== 'git' || !/\baborted\b/.test(messageOf(error))
+            throw error
+          }),
+      },
       Backend.INSTALLED_BACKEND_PROBES,
     )
     backend ??= probed
 
     if (!probed || backend !== probed) {
-      return
+      return asked.isAnswered || backend !== null
     }
 
     const stored = PaneState.baseModeOf(
@@ -103,6 +120,8 @@ export function register(on: On) {
       baseModes: probed.baseModes,
       ...(mode && { requestedMode: mode }),
     }
+
+    return true
   }
 
   function redraw(engine: Host) {
@@ -477,10 +496,14 @@ export function register(on: On) {
       return next(e)
     }
 
-    await pinBackend(host)
+    const isAnswered = (await pinBackend(host)) || (await pinBackend(host))
 
     if (!backend) {
-      return { text: Names.NOT_IN_REPOSITORY_TEXT }
+      return {
+        text: isAnswered
+          ? Names.NOT_IN_REPOSITORY_TEXT
+          : Names.GIT_UNANSWERED_TEXT,
+      }
     }
 
     const isOpening =
