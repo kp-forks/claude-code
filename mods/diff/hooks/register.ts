@@ -491,6 +491,7 @@ export function register(on: On) {
         ui: { Box, Text, Button, Select, Code },
         actions: actionsOf(host),
         columns: e.props.bodyColumns,
+        rows: e.props.scroll.bodyRows,
       },
       model,
       e.props.placement,

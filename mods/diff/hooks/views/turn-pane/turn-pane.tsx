@@ -70,7 +70,7 @@ export function turnPane(
   return (
     <Box flexDirection="column">
       {Sections.present([
-        Sections.headerView(kit, null, PaneState.turnTotalsOf(turn)),
+        Sections.headerView(kit, PaneState.turnTotalsOf(turn)),
         Sections.dimNote(
           kit,
           `Turn ${turn.index} "${Layout.sanitizeName(turn.preview)}"`,

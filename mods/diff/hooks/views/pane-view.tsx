@@ -40,7 +40,11 @@ export function paneView(
 
   const right = Limits.PANE_RIGHT_PAD_COLUMNS
   const top = Limits.PANE_TOP_PAD_ROWS
-  const inset: Kit = { ...kit, columns: Math.max(1, kit.columns - right) }
+  const inset: Kit = {
+    ...kit,
+    columns: Math.max(1, kit.columns - right),
+    rows: Math.max(0, kit.rows - top),
+  }
 
   return (
     <Box flexDirection="column" paddingTop={top} paddingRight={right}>

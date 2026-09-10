@@ -12,6 +12,7 @@ import Layout from '../layout'
 import Sections from '../sections'
 import { fileRowOf } from './file-row-of'
 import { listBodyOf } from './list-body-of'
+import { messagePaneOf } from './message-pane-of'
 
 /**
  * The pane over the repository's diff now (ReplDiffSidebarBody, one file's
@@ -19,9 +20,11 @@ import { listBodyOf } from './list-body-of'
  *
  * The tests-and-generated toggle sits above the rows; the elision count, the
  * withheld-untracked note, the pre-session line and rows below them; the
- * selected file last.
+ * selected file last. With no rows to list, the loading line, the empty
+ * state or the too-many and only-hidden lines take the body instead
+ * (messagePaneOf), the header keeping only the close.
  *
- * @param kit the elements, the handlers, the width
+ * @param kit the elements, the handlers, the width, the rows
  * @param model the pane's state
  * @returns the pane's tree
  */
@@ -37,7 +40,13 @@ export function currentPane(
   }
 
   if (!data && !model.hasSettled) {
-    return <Box>{Sections.dimNote(kit, 'Loading diff…')}</Box>
+    return messagePaneOf(kit, {
+      top: [Sections.headerView(kit, null)],
+      message: ['Loading diff…'],
+      controls: null,
+      earlier: null,
+      rest: [],
+    })
   }
 
   const noise = model.isNoiseShown ? 'shown' : 'hidden'
@@ -84,6 +93,16 @@ export function currentPane(
   const earlierRows = model.isPreSessionShown ? partition.preSession : []
   const isUntrackedNoted = data?.isUntrackedWithheld === true && !empty
   const listed = listBodyOf(kit, { data, partition, totals, empty })
+  const notes = listed.filter(line => typeof line === 'string')
+  const hasRows = notes.length < listed.length
+  const message = empty ? [empty.headline, ...notes] : hasRows ? [] : notes
+  const header = Sections.headerView(kit, empty ? null : totals)
+  const notShownNote = noteOf(
+    totals.notShown > 0 ? `${totals.notShown} not shown` : null,
+  )
+  const untrackedNote = noteOf(
+    isUntrackedNoted ? Names.untrackedWithheldTextOf(model.words.lister) : null,
+  )
   const detail = selected
     ? [
         Sections.divider(kit),
@@ -104,10 +123,27 @@ export function currentPane(
       ]
     : []
 
+  if (message.length > 0) {
+    return messagePaneOf(kit, {
+      top: Sections.present([
+        header,
+        noteOf(baseLabel),
+        Sections.todoBar(kit, model.todos),
+        noiseToggle,
+        notShownNote,
+        untrackedNote,
+      ]),
+      message,
+      controls: Sections.controlsView(kit, model),
+      earlier: earlierToggle,
+      rest: [...earlierRows.map(rowOf), ...detail],
+    })
+  }
+
   return (
     <Box flexDirection="column">
       {Sections.present([
-        Sections.headerView(kit, empty?.headline ?? null, totals),
+        header,
         noteOf(baseLabel),
         Sections.todoBar(kit, model.todos),
         Sections.controlsView(kit, model),
@@ -115,12 +151,8 @@ export function currentPane(
         ...listed.map(line =>
           typeof line === 'string' ? noteOf(line) : rowOf(line),
         ),
-        noteOf(totals.notShown > 0 ? `${totals.notShown} not shown` : null),
-        noteOf(
-          isUntrackedNoted
-            ? Names.untrackedWithheldTextOf(model.words.lister)
-            : null,
-        ),
+        notShownNote,
+        untrackedNote,
         earlierToggle,
         ...earlierRows.map(rowOf),
         ...detail,

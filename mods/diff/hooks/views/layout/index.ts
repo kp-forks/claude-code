@@ -5,5 +5,6 @@ export * from './sanitize-line'
 export * from './sanitize-name'
 export * from './tab-width'
 export * from './truncate-start'
+export * from './wrapped-lines'
 
 export * as default from '.'
