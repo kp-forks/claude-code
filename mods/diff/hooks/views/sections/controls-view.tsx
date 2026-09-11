@@ -46,23 +46,23 @@ export function controlsView(
   ) : null
   const isCurrent = source.kind === 'current'
   const fetchedSource = model.data?.source
-  const base =
-    fetchedSource?.kind === 'working-tree'
-      ? fetchedSource.base
-      : model.words.base
+  const isWorkingTree = fetchedSource?.kind === 'working-tree'
+  const base = isWorkingTree ? fetchedSource.base : model.words.base
   const basePicker = isCurrent ? (
     <Select
       key="base"
       label="base"
-      options={model.baseModes.map(mode => ({
-        value: mode,
-        label:
-          mode === 'uncommitted'
-            ? `uncommitted (vs ${base})`
-            : mode === 'session'
-              ? 'this session'
-              : mode,
-      }))}
+      options={model.baseModes.map(mode => {
+        const isUncommitted = mode === 'uncommitted'
+        const isSession = mode === 'session'
+        const label = isUncommitted
+          ? `uncommitted (vs ${base})`
+          : isSession
+            ? 'this session'
+            : mode
+
+        return { value: mode, label }
+      })}
       value={model.requestedMode}
       onSelect={value => kit.actions.chooseBase(value)}
     />

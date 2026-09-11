@@ -595,10 +595,10 @@ export function register(on: On) {
     }
 
     const context = e.context ?? []
-    const used = context.reduce((sum, entry) => sum + entry.length, 0)
     const text = Ask.fittedAskTextOf(
       asked.text,
-      Limits.PROMPT_CONTEXT_MAX_CHARS - used,
+      Limits.PROMPT_CONTEXT_MAX_CHARS -
+        context.reduce((sum, entry) => sum + entry.length, 0),
     )
 
     if (text === undefined) {

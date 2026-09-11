@@ -33,9 +33,8 @@ export function wrappedLines(text: string, columns: number): string[] {
     if (wordWidth > width) {
       const breaksHere =
         1 + Math.floor((wordWidth - (width - rowWidth) - 1) / width)
-      const breaksNext = Math.floor((wordWidth - 1) / width)
 
-      if (breaksNext < breaksHere) {
+      if (Math.floor((wordWidth - 1) / width) < breaksHere) {
         rows.push('')
       }
 

@@ -5,6 +5,8 @@ import type { RenderElement } from 'claude-code'
 
 import type { Kit } from '../../kit'
 import Layout from '../../layout'
+import { FOOT_ROWS } from './foot-rows'
+import type { MessagePane } from './message-pane'
 
 /**
  * The pane while a message stands in for the list (ReplDiffSidebar's
@@ -19,16 +21,7 @@ import Layout from '../../layout'
  *   pre-session line, and what is listed under it
  * @returns the pane's tree
  */
-export function messagePaneOf(
-  kit: Kit,
-  pane: {
-    top: readonly RenderElement[]
-    message: readonly string[]
-    controls: RenderElement | null
-    earlier: RenderElement | null
-    rest: readonly RenderElement[]
-  },
-): RenderElement {
+export function messagePaneOf(kit: Kit, pane: MessagePane): RenderElement {
   const { Box, Text } = kit.ui
   const { top, controls, earlier, rest } = pane
   const lines = pane.message.flatMap(text =>
@@ -37,11 +30,13 @@ export function messagePaneOf(
   const drawn = lines.map(line => <Text dimColor>{line}</Text>)
   const controlRows = controls === null ? [] : [controls]
   const earlierRows = earlier === null ? [] : [earlier]
-  const aboveEarlier =
+  const isControlsAboveEarlier =
     controlRows.length > 0 || earlierRows.length === 0
-      ? controlRows
-      : [<Box height={1} />]
-  const middleRows = kit.rows - top.length - 1 - (earlier === null ? 0 : 3)
+  const aboveEarlier = isControlsAboveEarlier
+    ? controlRows
+    : [<Box height={1} />]
+  const footRows = earlier === null ? 0 : FOOT_ROWS
+  const middleRows = kit.rows - top.length - 1 - footRows
   const above = Math.floor((middleRows - lines.length) / 2)
   const isCentered =
     rest.length === 0 && middleRows - above - lines.length >= controlRows.length

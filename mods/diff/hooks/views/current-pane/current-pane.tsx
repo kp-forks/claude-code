@@ -89,10 +89,10 @@ export function currentPane(
       })
     : null
   const earlierFiles = model.isPreSessionShown ? partition.preSession : []
-  const earlierRows =
-    earlierFiles.length === 0
-      ? []
-      : [<Box height={1} />, ...earlierFiles.map(rowOf)]
+  const isEarlierListed = earlierFiles.length > 0
+  const earlierRows = isEarlierListed
+    ? [<Box height={1} />, ...earlierFiles.map(rowOf)]
+    : []
   const isUntrackedNoted = data?.isUntrackedWithheld === true && !empty
   const listed = listBodyOf(kit, { data, partition, totals, empty })
   const notes = listed.filter(line => typeof line === 'string')
@@ -125,8 +125,10 @@ export function currentPane(
       ]
     : []
 
-  if (message.length > 0) {
-    return messagePaneOf(kit, {
+  const isMessageShown = message.length > 0
+
+  return isMessageShown ? (
+    messagePaneOf(kit, {
       top: Sections.present([
         header,
         noteOf(baseLabel),
@@ -140,9 +142,7 @@ export function currentPane(
       earlier: earlierToggle,
       rest: [...earlierRows, ...detail],
     })
-  }
-
-  return (
+  ) : (
     <Box flexDirection="column">
       {Sections.present([
         header,

@@ -30,11 +30,11 @@ export async function untrackedFiles(
     '--full-name',
   ])
 
-  if (!Parse.isWholeAnswer(listing)) {
-    return null
-  }
-
-  const paths = listing.stdout.split('\0').filter(path => path !== '')
-
-  return untrackedRowsOf(context, paths, place)
+  return Parse.isWholeAnswer(listing)
+    ? untrackedRowsOf(
+        context,
+        listing.stdout.split('\0').filter(path => path !== ''),
+        place,
+      )
+    : null
 }

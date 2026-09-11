@@ -12,11 +12,12 @@ import type { PaneBelief } from './pane-belief'
  * @param pane the plugin's belief, the probe's answer and the width
  * @returns `close`, `open` or `too-narrow`
  */
-export const paneToggleOf = (
+export function paneToggleOf(
   pane: PaneBelief,
-): 'open' | 'close' | 'too-narrow' =>
-  pane.isBelievedOpen && pane.wasDrawnWhenProbed
-    ? 'close'
-    : pane.columns !== null && pane.columns < Limits.OPEN_MIN_COLUMNS
-      ? 'too-narrow'
-      : 'open'
+): 'open' | 'close' | 'too-narrow' {
+  const isClosing = pane.isBelievedOpen && pane.wasDrawnWhenProbed
+  const isTooNarrow =
+    pane.columns !== null && pane.columns < Limits.OPEN_MIN_COLUMNS
+
+  return isClosing ? 'close' : isTooNarrow ? 'too-narrow' : 'open'
+}

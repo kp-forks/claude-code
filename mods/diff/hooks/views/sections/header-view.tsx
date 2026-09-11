@@ -24,20 +24,22 @@ export function headerView(
   totals: PaneState.HeaderTotals | null,
 ): RenderElement {
   const { Box, Text } = kit.ui
-  const counts =
-    totals === null
-      ? []
-      : [
-          <Text wrap="truncate-end">
-            <Text bold>{Layout.plural(totals.filesCount, 'file')}</Text>
-            {' changed '}
-            {diffStat(kit, totals.linesAdded, totals.linesRemoved)}
-          </Text>,
-        ]
 
   return (
     <Box flexDirection="row">
-      {[...counts, <Box flexGrow={1} />, closeButton(kit)]}
+      {[
+        ...(totals
+          ? [
+              <Text wrap="truncate-end">
+                <Text bold>{Layout.plural(totals.filesCount, 'file')}</Text>
+                {' changed '}
+                {diffStat(kit, totals.linesAdded, totals.linesRemoved)}
+              </Text>,
+            ]
+          : []),
+        <Box flexGrow={1} />,
+        closeButton(kit),
+      ]}
     </Box>
   )
 }
