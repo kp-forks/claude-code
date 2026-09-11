@@ -8,29 +8,36 @@ import type {
 import type { Plugin } from 'claude-code/testing'
 import { expect, memoryEnv, seat, test } from 'claude-code/testing'
 
+import type { LogEntry } from '../hooks/telemetry-types'
+
 seat('builtin')
 
 const BEARER: SessionAuthorization = { handle: 'the-handle', kind: 'bearer' }
 const ACCEPTED: HttpResponse = { status: 200, ok: true, headers: {}, text: '' }
 
+const SURVEY: LogEntry = {
+  event: 'survey_answered',
+  props: { answer: 2, seen: true },
+}
+
 /**
- * `/record <event>`, which the recording plugin answers.
+ * `/record <entry>`, which the recording plugin answers.
  */
-const record = (event: string): CommandRunInput => ({
+const record = (entry: LogEntry): CommandRunInput => ({
   command: 'record',
-  args: event,
+  args: JSON.stringify(entry),
   origin: { kind: 'composer' },
 })
 
 /**
- * A plugin whose `/record <event>` logs that event through `$.telemetry`,
+ * A plugin whose `/record <entry>` logs the entry through `$.telemetry`,
  * answering "sent", or why the row was refused.
  */
 const recording: Plugin = {
   name: 'recording',
   register(on) {
     on('command.run', { command: 'record' }, ($, e) =>
-      $.telemetry.log({ event: e.args, props: { answer: 2, seen: true } }).then(
+      $.telemetry.log(JSON.parse(e.args)).then(
         () => ({ text: 'sent' }),
         (error: unknown) => ({ text: String(error) }),
       ),
@@ -73,7 +80,7 @@ test(
     memoryEnv(on, { USER_TYPE: 'ant' })
     const posts = firstPartySession(on)
 
-    expect(await $.command.run(record('survey_answered'))).toEqual({
+    expect(await $.command.run(record(SURVEY))).toEqual({
       text: 'sent',
     })
     expect(posts).toHaveLength(1)
@@ -103,7 +110,9 @@ test(
     memoryEnv(on, {})
     const posts = firstPartySession(on)
 
-    await $.command.run(record('tengu_repl_diff_panel_shown'))
+    await $.command.run(
+      record({ ...SURVEY, event: 'tengu_repl_diff_panel_shown' }),
+    )
 
     expect(posts.map(batchOf)).toMatchObject([
       {
@@ -127,7 +136,7 @@ test(
     memoryEnv(on, { DO_NOT_TRACK: '1' })
     const posts = firstPartySession(on)
 
-    expect(await $.command.run(record('survey_answered'))).toEqual({
+    expect(await $.command.run(record(SURVEY))).toEqual({
       text: 'sent',
     })
     expect(posts).toEqual([])
@@ -141,7 +150,7 @@ test(
     memoryEnv(on, { CLAUDE_CODE_USE_BEDROCK: '1' })
     const posts = firstPartySession(on)
 
-    await $.command.run(record('survey_answered'))
+    await $.command.run(record(SURVEY))
 
     expect(posts).toEqual([])
   },
@@ -153,12 +162,28 @@ test(
   async ($, on) => {
     memoryEnv(on, {})
     const posts = firstPartySession(on, null)
-    const { text } = await $.command.run(record('survey_answered'))
+    const { text } = await $.command.run(record(SURVEY))
 
     expect(text).toEndWith(
       '$.telemetry.log: this session has no first-party credential to ' +
         'authorize',
     )
+    expect(posts).toEqual([])
+  },
+)
+
+test(
+  'free text in a row is refused, nothing sent',
+  { plugins: [recording] },
+  async ($, on) => {
+    memoryEnv(on, {})
+    const posts = firstPartySession(on)
+    const { text } = await $.command.run({
+      ...record(SURVEY),
+      args: '{"event":"survey_answered","props":{"note":"hello world"}}',
+    })
+
+    expect(text).toContain('props.note: free text is refused')
     expect(posts).toEqual([])
   },
 )
