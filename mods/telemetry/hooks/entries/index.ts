@@ -1,6 +1,7 @@
 export * from './batch-of.js'
 export * from './checked-fields.js'
 export * from './checked-mark.js'
+export * from './checked-props'
 export * from './checked-value'
 export * from './choice-token'
 export * from './choices-limit'

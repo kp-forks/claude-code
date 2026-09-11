@@ -1,3 +1,4 @@
+import { checkedProps } from './checked-props'
 import type { Fields } from './fields'
 import { isMarkKind } from './is-mark-kind'
 import { isRecord } from './is-record'
@@ -7,17 +8,19 @@ import { TOKEN } from './token'
 
 /**
  * The row's fields from one mark, or a refusal naming the first thing
- * wrong: the entry's shape, the feature, the kind, then the reason.
+ * wrong: the entry's shape, the feature, the kind, the reason, then each
+ * property in turn.
  *
- * @param entry the feature, kind and reason as the caller passed them
+ * @param entry the feature, kind, reason and properties as the caller passed
+ *   them
  * @returns the mark's row fields once the entry passes every check
  */
 export function checkedMark(entry: unknown): Fields {
   if (!isRecord(entry)) {
-    throw refusal('takes one entry, { feature, kind, reason? }', 'mark')
+    throw refusal('takes one entry, { feature, kind, reason?, props? }', 'mark')
   }
 
-  const { feature, kind, reason } = entry
+  const { feature, kind, reason, props = {} } = entry
 
   if (typeof feature !== 'string' || !TOKEN.test(feature)) {
     throw refusal('takes a feature name, a snake_case token', 'mark')
@@ -32,7 +35,7 @@ export function checkedMark(entry: unknown): Fields {
       throw refusal('reason: an ok mark carries none', 'mark')
     }
 
-    return markFieldsOf(kind, feature)
+    return markFieldsOf(kind, feature, undefined, checkedProps(props, 'mark'))
   }
 
   if (typeof reason !== 'string' || !TOKEN.test(reason)) {
@@ -42,5 +45,5 @@ export function checkedMark(entry: unknown): Fields {
     )
   }
 
-  return markFieldsOf(kind, feature, reason)
+  return markFieldsOf(kind, feature, reason, checkedProps(props, 'mark'))
 }
