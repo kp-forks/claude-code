@@ -7,6 +7,7 @@ import Limits from '../limits'
 import Names from '../names'
 import PaneState from '../pane-state'
 import { currentPane } from './current-pane'
+import { insetOf } from './inset-of'
 import type { Kit } from './kit'
 import Sections from './sections'
 import { turnPane } from './turn-pane'
@@ -37,16 +38,14 @@ export function paneView(
     return <Box>{Sections.dimNote(kit, Names.RESIZE_TERMINAL_TEXT)}</Box>
   }
 
-  const right = Limits.PANE_RIGHT_PAD_COLUMNS
-  const top = Limits.PANE_TOP_PAD_ROWS
-  const inset: Kit = {
-    ...kit,
-    columns: Math.max(1, kit.columns - right),
-    rows: Math.max(0, kit.rows - top),
-  }
+  const inset = insetOf(kit)
 
   return (
-    <Box flexDirection="column" paddingTop={top} paddingRight={right}>
+    <Box
+      flexDirection="column"
+      paddingTop={Limits.PANE_TOP_PAD_ROWS}
+      paddingRight={Limits.PANE_RIGHT_PAD_COLUMNS}
+    >
       {isCurrent ? currentPane(inset, model) : turnPane(inset, model, turn)}
     </Box>
   )

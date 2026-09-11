@@ -54,12 +54,7 @@ export function currentPane(
     ? PaneState.headerTotalsOf(data, partition)
     : PaneState.ZERO_TOTALS
   const empty = PaneState.emptyStateOf(data, totals.filesCount, model.words)
-  const baseLabel = PaneState.baseLabelOf(
-    model.requestedMode,
-    data,
-    totals.filesCount,
-    model.words,
-  )
+  const baseLabel = PaneState.baseLabelOf(model, totals.filesCount)
   const selected = PaneState.selectionOf(
     PaneState.listedOf(partition, preSession),
     model.selectedPath,
@@ -103,7 +98,7 @@ export function currentPane(
     totals.notShown > 0 ? `${totals.notShown} not shown` : null,
   )
   const untrackedNote = noteOf(
-    isUntrackedNoted ? Names.untrackedWithheldTextOf(model.words.lister) : null,
+    isUntrackedNoted ? Names.untrackedWithheldTextOf(model.words) : null,
   )
   const detail = selected
     ? [
@@ -132,7 +127,7 @@ export function currentPane(
       top: Sections.present([
         header,
         noteOf(baseLabel),
-        Sections.todoBar(kit, model.todos),
+        Sections.todoBar(kit, model),
         noiseToggle,
         notShownNote,
         untrackedNote,
@@ -147,7 +142,7 @@ export function currentPane(
       {Sections.present([
         header,
         noteOf(baseLabel),
-        Sections.todoBar(kit, model.todos),
+        Sections.todoBar(kit, model),
         Sections.controlsView(kit, model),
         noiseToggle,
         ...listed.map(line =>

@@ -22,11 +22,7 @@ export async function untrackedRowsOf(
   place: UntrackedPlace,
 ): Promise<readonly Types.FileStat[]> {
   const probedPaths = paths.slice(0, Limits.MAX_UNTRACKED_PROBES)
-  const datings = await datingsOf(
-    context.stamps,
-    context.deps.sessionStartMs,
-    probedPaths,
-  )
+  const datings = await datingsOf(context, probedPaths)
   const probed = probedPaths.map(path => ({
     path,
     isPreSession: datings.get(path) !== 'session',

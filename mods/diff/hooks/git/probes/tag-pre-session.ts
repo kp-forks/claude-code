@@ -17,8 +17,7 @@ export async function tagPreSession(
   files: readonly Types.FileStat[],
 ): Promise<readonly Types.FileStat[]> {
   const datings = await datingsOf(
-    context.stamps,
-    context.deps.sessionStartMs,
+    context,
     files.map(file => file.path),
   )
 

@@ -1,6 +1,5 @@
-import type Backend from '../backend'
-import type Git from '../git'
 import { modeLabelOf } from './mode-label-of'
+import type { PaneModel } from './pane-model'
 
 /**
  * The dim line under the header naming what the diff compares against
@@ -10,18 +9,17 @@ import { modeLabelOf } from './mode-label-of'
  * with an ellipsis while its fetch is pending; on an unborn HEAD with
  * rows, what the rows are instead.
  *
- * @param requested the mode the person picked
- * @param data the last good fetch
+ * @param model the mode the person picked, the last good fetch, and the
+ *   backend's words
  * @param filesCount the header's session file count
- * @param words the backend's words
  * @returns the line, or null
  */
 export function baseLabelOf(
-  requested: Git.BaseMode,
-  data: Git.DiffData | null,
+  model: Pick<PaneModel, 'requestedMode' | 'data' | 'words'>,
   filesCount: number,
-  words: Pick<Backend.BackendWords, 'base'>,
 ): string | null {
+  const { requestedMode, data } = model
+
   if (!data) {
     return null
   }
@@ -32,15 +30,15 @@ export function baseLabelOf(
     return hasRows ? 'no commits yet — showing staged and new files' : null
   }
 
-  const isPending = requested !== data.mode
-  const isSettledSession = !isPending && requested === 'session'
+  const isPending = requestedMode !== data.mode
+  const isSettledSession = !isPending && requestedMode === 'session'
 
   if (isSettledSession) {
     return null
   }
 
   const phase = isPending ? 'pending' : 'settled'
-  const label = modeLabelOf(requested, data.source, phase, words)
+  const label = modeLabelOf(model, data.source, phase)
 
   return isPending ? `${label}…` : label
 }

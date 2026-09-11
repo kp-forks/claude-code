@@ -3,7 +3,7 @@
 /* @jsxFrag Fragment */
 import type { RenderElement } from 'claude-code'
 
-import type Todos from '../../todos'
+import type PaneState from '../../pane-state'
 import type { Kit } from '../kit'
 import { TODO_BAR_CELLS } from './todo-bar-cells'
 import { TODO_BAR_RESERVE } from './todo-bar-reserve'
@@ -13,13 +13,15 @@ import { TODO_BAR_RESERVE } from './todo-bar-reserve'
  * a todo list exists (ReplDiffSidebar's ProgressBar row).
  *
  * @param kit the elements and the width
- * @param todos completed over total
+ * @param model the pane's state, holding its todos' completed over total
  * @returns the row, or null without todos
  */
 export function todoBar(
   kit: Kit,
-  todos: Todos.TodoProgress,
+  model: Pick<PaneState.PaneModel, 'todos'>,
 ): RenderElement | null {
+  const { todos } = model
+
   if (todos.total === 0) {
     return null
   }
