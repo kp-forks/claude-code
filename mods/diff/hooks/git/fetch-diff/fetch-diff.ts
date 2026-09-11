@@ -1,6 +1,6 @@
-import Probes from './probes'
-import Tiers from './tiers'
-import type Types from './types'
+import Probes from '../probes'
+import Tiers from '../tiers'
+import type Types from '../types'
 
 /**
  * One fetch of the session's pinned repository, as the built-in panel

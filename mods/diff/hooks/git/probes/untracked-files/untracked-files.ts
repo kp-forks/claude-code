@@ -1,5 +1,5 @@
 import Argv from '../../argv'
-import GitParse from '../../parse'
+import Parse from '../../parse'
 import type Types from '../../types'
 import type { UntrackedPlace } from '../untracked-place'
 import { untrackedRowsOf } from '../untracked-rows-of'
@@ -30,7 +30,7 @@ export async function untrackedFiles(
     '--full-name',
   ])
 
-  if (!GitParse.isWholeAnswer(listing)) {
+  if (!Parse.isWholeAnswer(listing)) {
     return null
   }
 

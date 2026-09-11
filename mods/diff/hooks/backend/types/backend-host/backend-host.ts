@@ -1,5 +1,5 @@
 import type Git from '../../../git'
-import type Host from '../../../host'
+import type { Host } from '../../../host'
 
 /**
  * What pinning a backend takes from the bound host: its raw process runner,
@@ -9,7 +9,7 @@ import type Host from '../../../host'
  * to the runner; the session's start is read as it stands at each fetch
  * (a later `session.start` moves it).
  */
-export type BackendHost = Pick<Host.Host, 'run' | 'readFile'> &
+export type BackendHost = Pick<Host, 'run' | 'readFile'> &
   Pick<Git.GitDeps, 'mtimeOf' | 'entryKindsOf' | 'onBranchBase'> & {
     /**
      * The engine's clock, in milliseconds (`$.clock.now`).

@@ -1,4 +1,4 @@
-import { ASK_CUT_NOTE } from './ask-cut-note.js'
+import { ASK_CUT_NOTE } from './ask-cut-note'
 
 /**
  * An armed ask's text as it fits in the room a prompt's context has left:

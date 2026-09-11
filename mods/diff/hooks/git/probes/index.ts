@@ -22,7 +22,7 @@ export * from './tag-pre-session.js'
 export * from './transient-state-files'
 export * from './unstaged-numstat.js'
 export * from './untracked-files'
-export * from './untracked-rows-of'
 export * from './untracked-place'
+export * from './untracked-rows-of'
 
 export * as default from '.'

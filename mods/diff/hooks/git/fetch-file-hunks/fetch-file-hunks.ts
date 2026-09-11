@@ -1,7 +1,7 @@
-import Argv from './argv'
-import { EMPTY_FILE_HUNKS } from './empty-file-hunks'
-import GitParse from './parse'
-import type Types from './types'
+import Argv from '../argv'
+import { EMPTY_FILE_HUNKS } from '../empty-file-hunks'
+import Parse from '../parse'
+import type Types from '../types'
 
 /**
  * One file's hunks against the base its row was read against, so body and
@@ -37,5 +37,5 @@ export async function fetchFileHunks(
     file.path,
   ])
 
-  return exitCode === 0 ? GitParse.parseFileDiff(stdout) : null
+  return exitCode === 0 ? Parse.parseFileDiff(stdout) : null
 }
