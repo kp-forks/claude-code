@@ -37,7 +37,7 @@ export function register(on: On) {
   let isPaneOpen = false
   let hasAutoOpened = false
   let columns: number | null = null
-  let hasShownOnce = false
+  let shownSessionId: string | null = null
   let wasDrawnSinceProbe = false
   let armed: Ask.ArmedAsk | null = null
   let carrying: Ask.ArmedAsk | null = null
@@ -288,9 +288,10 @@ export function register(on: On) {
     isPaneOpen = true
     const record = Record.recorderOf(engine)
     record.mark(Record.FEATURES.tabSwitch, { kind: 'ok' })
+    const sessionId = await engine.sessionId().catch(() => null)
 
-    if (!hasShownOnce) {
-      hasShownOnce = true
+    if (sessionId !== null && sessionId !== shownSessionId) {
+      shownSessionId = sessionId
       record.shown(trigger, Record.widthBucketOf(columns))
     }
 
@@ -464,6 +465,7 @@ export function register(on: On) {
       openPane: pane => $.ui.open(pane),
       closePane: pane => $.ui.close(pane),
       registerCommand: spec => $.command.register(spec),
+      sessionId: () => $.session.id(),
       mark: entry => $.telemetry.mark(entry),
       log: entry => $.telemetry.log(entry),
     })
@@ -621,7 +623,7 @@ export function register(on: On) {
       const result = await next({ ...e, context: [...context, text] })
 
       if (result.drop === undefined) {
-        Record.recorderOf(host).asked(asked.lines)
+        Record.recorderOf(host).asked()
 
         if (armed === asked) {
           disarm(host)

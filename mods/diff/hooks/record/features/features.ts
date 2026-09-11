@@ -3,11 +3,12 @@
  * feature surface keeps one series across the swap.
  *
  * `read` per fetch round, `tabSwitch` per open or close, `baseSwitch` per
- * base pick, `baseResolve` once a session.
+ * base pick, `baseResolve` once a session, `selectionAttach` per diff asked.
  */
 export const FEATURES = {
   read: 'repl_diff_read',
   tabSwitch: 'repl_tab_switch',
   baseSwitch: 'repl_diff_base_switch',
   baseResolve: 'diff_base_resolve',
+  selectionAttach: 'diff_selection_attach',
 } as const

@@ -105,6 +105,11 @@ export type Host = {
   registerCommand: (spec: CommandSpec) => Promise<unknown>
 
   /**
+   * `$.session.id`: the session the pane-shown row is latched to.
+   */
+  sessionId: () => Promise<string>
+
+  /**
    * `$.telemetry.mark`; rejects where the telemetry built-in is absent.
    */
   mark: EngineInterface['telemetry']['mark']
