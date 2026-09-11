@@ -6,8 +6,8 @@ import type {
   Settings,
   ToolInfo,
 } from 'claude-code'
+import { describe, expect, test, tier } from 'claude-code/testing'
 import type { Plugin } from 'claude-code/testing'
-import { expect, test, tier } from 'claude-code/testing'
 
 tier('prepend')
 
@@ -24,7 +24,7 @@ const TOOLS_COMMAND: CommandRunInput = {
 const ALLOWLIST: Settings = { allowedMcpServers: [{ serverName: 'corp' }] }
 const NO_ALLOWLIST: Settings = { permissions: { allow: [] } }
 const MEMORY: PromptSectionInput = { name: 'memory', text: 'the org says hi' }
-const TOOLS: ToolInfo[] = [
+const TOOLS: readonly ToolInfo[] = [
   {
     name: 'mcp__corp__search',
     description: 'Searches the corp wiki.',
@@ -54,6 +54,13 @@ const registering = (name: string, tier?: Plugin['tier']): Plugin => ({
 })
 
 /**
+ * What registering a plugin's tool answers: the name it is called by.
+ */
+const registeredToolOf = (plugin: string, name: string) => ({
+  value: { tool: `mcp__plugin_${plugin}__${name}` },
+})
+
+/**
  * A session starting, where each tool a plugin asks for is registered and
  * kept by the name of the plugin that asked.
  */
@@ -63,7 +70,7 @@ function toolsRegistered(on: On) {
   on('tool.register', ($, e, next) => {
     registered.push(next.origin.plugin)
 
-    return { value: { tool: `mcp__plugin_${next.origin.plugin}__${e.name}` } }
+    return registeredToolOf(next.origin.plugin, e.name)
   })
 
   return registered
@@ -78,14 +85,16 @@ const relabeling: Plugin = {
   register(on) {
     on('tool.list', async ($, e, next) => {
       const listed = await next(e)
+      const { value } = listed
+      const isListed = value !== undefined
 
-      return listed.value === undefined
-        ? listed
-        : {
-            value: listed.value
+      return isListed
+        ? {
+            value: value
               .filter(tool => !tool.name.startsWith('mcp__corp__'))
               .map(tool => ({ ...tool, description: 'relabeled' })),
           }
+        : listed
     })
   },
 }
@@ -128,69 +137,71 @@ const signing: Plugin = {
   },
 }
 
-test(
-  'under an MCP allowlist a plugin the person installed may not add a tool',
-  { plugins: [registering('mine'), registering('bundled', 'builtin')] },
-  async ($, on) => {
-    on('settings.read', () => ({ value: ALLOWLIST }))
-    const registered = toolsRegistered(on)
+describe('sec-default', () => {
+  test(
+    'under an MCP allowlist a plugin the person installed may not add a tool',
+    { plugins: [registering('mine'), registering('bundled', 'builtin')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: ALLOWLIST }))
+      const registered = toolsRegistered(on)
 
-    await $.session.start(SESSION)
+      await $.session.start(SESSION)
 
-    expect(registered).toEqual(['bundled'])
-  },
-)
+      expect(registered).toEqual(['bundled'])
+    },
+  )
 
-test(
-  'with no allowlist, a plugin the person installed adds its tool',
-  { plugins: [registering('mine')] },
-  async ($, on) => {
-    on('settings.read', () => ({ value: NO_ALLOWLIST }))
-    const registered = toolsRegistered(on)
+  test(
+    'with no allowlist, a plugin the person installed adds its tool',
+    { plugins: [registering('mine')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: NO_ALLOWLIST }))
+      const registered = toolsRegistered(on)
 
-    await $.session.start(SESSION)
+      await $.session.start(SESSION)
 
-    expect(registered).toEqual(['mine'])
-  },
-)
+      expect(registered).toEqual(['mine'])
+    },
+  )
 
-test(
-  'a policy that cannot be read counts as one in force',
-  { plugins: [registering('mine')] },
-  async ($, on) => {
-    on('settings.read', () => ({ deny: 'managed settings unreadable' }))
-    const registered = toolsRegistered(on)
+  test(
+    'a policy that cannot be read counts as one in force',
+    { plugins: [registering('mine')] },
+    async ($, on) => {
+      on('settings.read', () => ({ deny: 'managed settings unreadable' }))
+      const registered = toolsRegistered(on)
 
-    await $.session.start(SESSION)
+      await $.session.start(SESSION)
 
-    expect(registered).toEqual([])
-  },
-)
+      expect(registered).toEqual([])
+    },
+  )
 
-test(
-  'the organization tools are listed as its tiers listed them',
-  { plugins: [relabeling, listing] },
-  async ($, on) => {
-    on('settings.read', () => ({ value: ALLOWLIST }))
-    on('tool.list', () => ({ value: TOOLS }))
+  test(
+    'the organization tools are listed as its tiers listed them',
+    { plugins: [relabeling, listing] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: ALLOWLIST }))
+      on('tool.list', () => ({ value: [...TOOLS] }))
 
-    const { text } = await $.command.run(TOOLS_COMMAND)
+      const { text } = await $.command.run(TOOLS_COMMAND)
 
-    expect(text?.split('\n')).toEqual([
-      'mcp__corp__search: Searches the corp wiki.',
-      'Bash: relabeled',
-    ])
-  },
-)
+      expect(text?.split('\n')).toEqual([
+        'mcp__corp__search: Searches the corp wiki.',
+        'Bash: relabeled',
+      ])
+    },
+  )
 
-test(
-  'a prompt section skips the plugins the person installed, never the organization ones',
-  { plugins: [dropping, signing] },
-  async ($, on) => {
-    on('prompt.section', ($, e) => ({ text: e.text }))
+  test(
+    'a prompt section passes over the plugins the person installed',
+    { plugins: [dropping, signing] },
+    async ($, on) => {
+      on('prompt.section', ($, e) => ({ text: e.text }))
 
-    expect(await $.prompt.section(MEMORY)).toEqual({
-      text: 'the org says hi (signed)',
-    })
-  },
-)
+      expect(await $.prompt.section(MEMORY)).toEqual({
+        text: 'the org says hi (signed)',
+      })
+    },
+  )
+})

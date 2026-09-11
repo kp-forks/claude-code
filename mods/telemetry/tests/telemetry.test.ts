@@ -5,23 +5,25 @@ import type {
   On,
   SessionAuthorization,
 } from 'claude-code'
+import { describe, expect, memoryEnv, test, tier } from 'claude-code/testing'
 import type { Plugin } from 'claude-code/testing'
-import { expect, memoryEnv, test, tier } from 'claude-code/testing'
 
 import type { LogEntry } from '../hooks/telemetry-types'
-
-tier('builtin')
 
 const BEARER: SessionAuthorization = { handle: 'the-handle', kind: 'bearer' }
 const ACCEPTED: HttpResponse = { status: 200, ok: true, headers: {}, text: '' }
 
-const SURVEY: LogEntry = {
+/**
+ * A survey answered, as a plugin logs it.
+ */
+const surveyAnswer = (): LogEntry => ({
   event: 'survey_answered',
   props: { answer: 2, seen: true },
-}
+})
 
 /**
- * `/record <entry>`, which the recording plugin answers.
+ * The command that has the recording plugin log an entry, typed as the
+ * person would type it.
  */
 const record = (entry: LogEntry): CommandRunInput => ({
   command: 'record',
@@ -46,8 +48,20 @@ const recording: Plugin = {
 }
 
 /**
- * A first-party session: its id and model, the credential it holds, and
- * the ingest accepting each row, each post kept as it was made.
+ * The batch a post to the ingest carries, as it was sent.
+ */
+const batchOf = (post: Args<'http.fetch'>): unknown =>
+  JSON.parse(String(post.init?.body))
+
+tier('builtin')
+
+/**
+ * Answers what the telemetry plugin reads of a session signed in first
+ * party, and keeps each post the ingest accepts.
+ *
+ * @param on the test's `on`
+ * @param authorization the credential the session holds
+ * @returns each post, as it was made
  */
 function firstPartySession(
   on: On,
@@ -66,124 +80,117 @@ function firstPartySession(
   return posts
 }
 
-/**
- * The batch a post to the ingest carries, as it was sent.
- */
-function batchOf(post: Args<'http.fetch'>): unknown {
-  return JSON.parse(String(post.init?.body))
-}
+describe('telemetry', () => {
+  test(
+    'a $.telemetry.log call from a plugin posts one first-party row',
+    { plugins: [recording] },
+    async ($, on) => {
+      memoryEnv(on, { USER_TYPE: 'ant' })
+      const posts = firstPartySession(on)
 
-test(
-  'a $.telemetry.log call from a plugin posts one first-party row',
-  { plugins: [recording] },
-  async ($, on) => {
-    memoryEnv(on, { USER_TYPE: 'ant' })
-    const posts = firstPartySession(on)
-
-    expect(await $.command.run(record(SURVEY))).toEqual({
-      text: 'sent',
-    })
-    expect(posts).toHaveLength(1)
-
-    const [post] = posts
-
-    expect(post.init).toMatchObject({ method: 'POST', auth: 'the-handle' })
-    expect(batchOf(post)).toMatchObject({
-      events: [
+      expect(await $.command.run(record(surveyAnswer()))).toEqual({
+        text: 'sent',
+      })
+      expect(posts.map(post => post.init)).toMatchObject([
+        { method: 'POST', auth: 'the-handle' },
+      ])
+      expect(posts.map(batchOf)).toMatchObject([
         {
-          event_data: {
-            event_name: 'tengu_plugin_survey_answered',
-            session_id: 'the-session',
-            model: 'the-model',
-            user_type: 'ant',
-          },
-        },
-      ],
-    })
-  },
-)
-
-test(
-  'a row already named tengu_ is sent under its own name',
-  { plugins: [recording] },
-  async ($, on) => {
-    memoryEnv(on, {})
-    const posts = firstPartySession(on)
-
-    await $.command.run(
-      record({ ...SURVEY, event: 'tengu_repl_diff_panel_shown' }),
-    )
-
-    expect(posts.map(batchOf)).toMatchObject([
-      {
-        events: [
-          {
-            event_data: {
-              event_name: 'tengu_repl_diff_panel_shown',
-              user_type: 'external',
+          events: [
+            {
+              event_data: {
+                event_name: 'tengu_plugin_survey_answered',
+                session_id: 'the-session',
+                model: 'the-model',
+                user_type: 'ant',
+              },
             },
-          },
-        ],
-      },
-    ])
-  },
-)
+          ],
+        },
+      ])
+    },
+  )
 
-test(
-  'nothing is sent for a person who asked not to be tracked',
-  { plugins: [recording] },
-  async ($, on) => {
-    memoryEnv(on, { DO_NOT_TRACK: '1' })
-    const posts = firstPartySession(on)
+  test(
+    'a row already named tengu_ is sent under its own name',
+    { plugins: [recording] },
+    async ($, on) => {
+      memoryEnv(on, {})
+      const posts = firstPartySession(on)
 
-    expect(await $.command.run(record(SURVEY))).toEqual({
-      text: 'sent',
-    })
-    expect(posts).toEqual([])
-  },
-)
+      await $.command.run(
+        record({ ...surveyAnswer(), event: 'tengu_repl_diff_panel_shown' }),
+      )
 
-test(
-  'nothing is sent on a third-party provider',
-  { plugins: [recording] },
-  async ($, on) => {
-    memoryEnv(on, { CLAUDE_CODE_USE_BEDROCK: '1' })
-    const posts = firstPartySession(on)
+      expect(posts.map(batchOf)).toMatchObject([
+        {
+          events: [
+            {
+              event_data: {
+                event_name: 'tengu_repl_diff_panel_shown',
+                user_type: 'external',
+              },
+            },
+          ],
+        },
+      ])
+    },
+  )
 
-    await $.command.run(record(SURVEY))
+  test(
+    'nothing is sent for a person who asked not to be tracked',
+    { plugins: [recording] },
+    async ($, on) => {
+      memoryEnv(on, { DO_NOT_TRACK: '1' })
+      const posts = firstPartySession(on)
+      const { text } = await $.command.run(record(surveyAnswer()))
 
-    expect(posts).toEqual([])
-  },
-)
+      expect({ text, posts }).toEqual({ text: 'sent', posts: [] })
+    },
+  )
 
-test(
-  'a session with no first-party credential is refused, nothing sent',
-  { plugins: [recording] },
-  async ($, on) => {
-    memoryEnv(on, {})
-    const posts = firstPartySession(on, null)
-    const { text } = await $.command.run(record(SURVEY))
+  test(
+    'nothing is sent on a third-party provider',
+    { plugins: [recording] },
+    async ($, on) => {
+      memoryEnv(on, { CLAUDE_CODE_USE_BEDROCK: '1' })
+      const posts = firstPartySession(on)
 
-    expect(text).toEndWith(
-      '$.telemetry.log: this session has no first-party credential to ' +
-        'authorize',
-    )
-    expect(posts).toEqual([])
-  },
-)
+      await $.command.run(record(surveyAnswer()))
 
-test(
-  'free text in a row is refused, nothing sent',
-  { plugins: [recording] },
-  async ($, on) => {
-    memoryEnv(on, {})
-    const posts = firstPartySession(on)
-    const { text } = await $.command.run({
-      ...record(SURVEY),
-      args: '{"event":"survey_answered","props":{"note":"hello world"}}',
-    })
+      expect(posts).toEqual([])
+    },
+  )
 
-    expect(text).toContain('props.note: free text is refused')
-    expect(posts).toEqual([])
-  },
-)
+  test(
+    'a session with no first-party credential is refused, nothing sent',
+    { plugins: [recording] },
+    async ($, on) => {
+      memoryEnv(on, {})
+      const posts = firstPartySession(on, null)
+      const { text } = await $.command.run(record(surveyAnswer()))
+
+      expect(text).toEndWith(
+        '$.telemetry.log: this session has no first-party credential to ' +
+          'authorize',
+      )
+      expect(posts).toEqual([])
+    },
+  )
+
+  test(
+    'free text in a row is refused, nothing sent',
+    { plugins: [recording] },
+    async ($, on) => {
+      memoryEnv(on, {})
+      const posts = firstPartySession(on)
+      const { text } = await $.command.run({
+        ...record(surveyAnswer()),
+        args: '{"event":"survey_answered","props":{"note":"hello world"}}',
+      })
+
+      expect(text).toContain('props.note: free text is refused')
+      expect(posts).toEqual([])
+    },
+  )
+})
