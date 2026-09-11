@@ -19,7 +19,7 @@
 // Also here: 'claude-code/testing', the kit a plugin's *.test.ts files
 // import under `claude plugin test <dir>`: `test(name, async ($, on) =>
 // { ... })`, where `$` is the engine's own and the hooks `on` registers
-// sit beneath every plugin; with seat, describe, expect and clock.
+// sit beneath every plugin; with tier, describe, expect and clock.
 //
 // Typing a plugin against it:
 //   export const register: Register = (on, options) => { ... }
@@ -8301,21 +8301,14 @@ declare module 'claude-code/testing' {
   export type TestBody = ($: Engine, on: import('claude-code').On) => unknown
 
   /**
-   * Where a plugin is seated: the organization's first (`prepend`), the
-   * person's own (`user`), the organization's last (`append`), or built in
-   * (`builtin`), in the engine's own chain order.
-   */
-  export type Seat = Exclude<import('claude-code').Tier, 'core'>
-
-  /**
    * A plugin a test writes inline, loaded as a plugin folder is: its name,
-   * where it is seated (`user` when not given), and its hooks module's
+   * the tier it loads in (`user` when not given), and its hooks module's
    * `register`, written `register(on) { ... }`. `register` is
    * self-contained, as a module's is: it closes over nothing of the test file.
    */
   export type Plugin = {
     name: string
-    tier?: Seat
+    tier?: Exclude<import('claude-code').Tier, 'core'>
     register: import('claude-code').Register
   }
 
@@ -8342,10 +8335,10 @@ declare module 'claude-code/testing' {
   export function describe(name: string, body: () => void): void
 
   /**
-   * Where the plugin under test is seated, once for the file, at its top
-   * level: the tier it ships in. Unsaid, it is the person's own (`user`).
+   * The tier the plugin under test loads in, once for the file, at its top
+   * level: `prepend`, `user` (when unsaid), `append` or `builtin`.
    */
-  export function seat(tier: Seat): void
+  export function tier(tier: Exclude<import('claude-code').Tier, 'core'>): void
 
   /**
    * The time `$.clock` reads in a test, which moves only when the test says:

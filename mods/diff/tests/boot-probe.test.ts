@@ -3,9 +3,9 @@ import type {
   ProcessRunResult,
   SessionStartInput,
 } from 'claude-code'
-import { clock, expect, seat, test } from 'claude-code/testing'
+import { clock, expect, test, tier } from 'claude-code/testing'
 
-seat('builtin')
+tier('builtin')
 
 const SESSION: SessionStartInput = {
   surface: 'terminal',
@@ -52,7 +52,7 @@ test('/diff at boot joins the boot probe, then asks again', async ($, on) => {
   await booting
 
   expect(await ran).toEqual({
-    text: expect.stringMatching(/isn.t in a git repository/),
+    text: expect.stringContaining("isn't in a git repository"),
   })
   expect(probes, 'then one more of its own').toHaveLength(2)
 })

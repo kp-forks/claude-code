@@ -31,9 +31,9 @@ would be, and nothing is beneath them: a call they leave unanswered throws,
 naming its event.
 
 ```ts
-import { expect, seat, test } from 'claude-code/testing'
+import { expect, test, tier } from 'claude-code/testing'
 
-seat('builtin')
+tier('builtin')
 
 test('outside a git repository /diff says so and opens nothing', async ($, on) => {
   const opened: string[] = []
@@ -52,7 +52,7 @@ test('outside a git repository /diff says so and opens nothing', async ($, on) =
     origin: { kind: 'composer' },
   })
 
-  expect(text).toMatch(/isn.t in a git repository/)
+  expect(text).toContain("isn't in a git repository")
   expect(opened).toEqual([])
 })
 ```

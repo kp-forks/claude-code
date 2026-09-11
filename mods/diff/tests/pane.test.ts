@@ -11,12 +11,12 @@ import {
   clock,
   expect,
   memoryStore,
-  seat,
   test,
   textOf,
+  tier,
 } from 'claude-code/testing'
 
-seat('builtin')
+tier('builtin')
 
 const SESSION: SessionStartInput = {
   surface: 'terminal',

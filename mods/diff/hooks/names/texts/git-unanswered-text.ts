@@ -5,5 +5,5 @@
  * cannot start has answered, and gets the not-a-repository text.
  */
 export const GIT_UNANSWERED_TEXT =
-  'The diff panel couldn’t read git state — git didn’t answer; run /diff ' +
+  "The diff panel couldn't read git state — git didn't answer; run /diff " +
   'again'

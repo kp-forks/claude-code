@@ -6,11 +6,11 @@ import type {
   SessionAuthorization,
 } from 'claude-code'
 import type { Plugin } from 'claude-code/testing'
-import { expect, memoryEnv, seat, test } from 'claude-code/testing'
+import { expect, memoryEnv, test, tier } from 'claude-code/testing'
 
 import type { LogEntry } from '../hooks/telemetry-types'
 
-seat('builtin')
+tier('builtin')
 
 const BEARER: SessionAuthorization = { handle: 'the-handle', kind: 'bearer' }
 const ACCEPTED: HttpResponse = { status: 200, ok: true, headers: {}, text: '' }

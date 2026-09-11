@@ -7,9 +7,9 @@ import type {
   ToolInfo,
 } from 'claude-code'
 import type { Plugin } from 'claude-code/testing'
-import { expect, seat, test } from 'claude-code/testing'
+import { expect, test, tier } from 'claude-code/testing'
 
-seat('prepend')
+tier('prepend')
 
 const SESSION: SessionStartInput = {
   surface: 'terminal',
@@ -116,7 +116,7 @@ const dropping: Plugin = {
 }
 
 /**
- * The organization's own plugin, seated last, which signs the section.
+ * The organization's own plugin, in its last tier, which signs the section.
  */
 const signing: Plugin = {
   name: 'signing',

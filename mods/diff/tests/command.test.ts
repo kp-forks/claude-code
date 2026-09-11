@@ -3,9 +3,9 @@ import type {
   ProcessRunResult,
   SessionStartInput,
 } from 'claude-code'
-import { expect, seat, test } from 'claude-code/testing'
+import { expect, test, tier } from 'claude-code/testing'
 
-seat('builtin')
+tier('builtin')
 
 const SESSION: SessionStartInput = {
   surface: 'terminal',
@@ -37,7 +37,7 @@ test('outside a git repository /diff says so and opens nothing', async ($, on) =
   await $.session.start(SESSION)
   const { text } = await $.command.run(DIFF)
 
-  expect(text).toMatch(/isn.t in a git repository/)
+  expect(text).toContain("isn't in a git repository")
   expect(opened).toEqual([])
 })
 
@@ -51,7 +51,7 @@ test('a git that never answers is not "no repository"', async ($, on) => {
   await $.session.start(SESSION)
   const { text } = await $.command.run(DIFF)
 
-  expect(text).toMatch(/git didn.t answer/)
+  expect(text).toContain("git didn't answer")
 })
 
 test('with the built-in holding /diff, the plugin stands down', async ($, on) => {
