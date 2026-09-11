@@ -46,6 +46,10 @@ const PANE: RenderInput<'Pane'> = {
     scroll: { offset: 0, bodyRows: 30 },
   },
 }
+/**
+ * The prompt's hint on a 160-column terminal: drawing it is how the plugin
+ * learns how wide the terminal is.
+ */
 const HINT: RenderInput<'PromptHint'> = {
   component: 'PromptHint',
   surface: 'terminal',
@@ -53,15 +57,17 @@ const HINT: RenderInput<'PromptHint'> = {
   viewport: { columns: 160, rows: 40 },
   props: { isDraft: false, isWorking: false, hint: '' },
 }
+/**
+ * What the engine draws for the hint, standing in beneath the plugin.
+ */
 const HINT_DRAWN: RenderElement = {
   type: 'Text',
   children: ['? for shortcuts'],
 }
 
 /**
- * A repository at /work with one changed file: an invocation of git whose
- * command line holds a key answers that output, and any other fails as git
- * does outside a repository.
+ * A repository at /work with one changed file, as git's output for each
+ * invocation whose command line holds the key.
  */
 const REPOSITORY: Readonly<Record<string, string>> = {
   'rev-parse --path-format=absolute': '/work\n/work/.git\n/work/.git\n',
@@ -71,6 +77,10 @@ const REPOSITORY: Readonly<Record<string, string>> = {
   '-- app.ts': '@@ -1 +1 @@\n-const a = 1\n+const a = 2\n',
 }
 
+/**
+ * What git answers in that repository; an invocation it does not know
+ * fails as git does outside a repository.
+ */
 function gitIn(argv: readonly string[]): ProcessRunResult {
   const line = argv.join(' ')
   const found = Object.entries(REPOSITORY).find(([key]) => line.includes(key))
@@ -134,8 +144,8 @@ test('every git child is pinned to the repository and reads the C locale', async
   await clock.advance(1000)
   const [discovery, ...pinned] = world.runs
 
-  expect(discovery?.argv).toContain('--show-toplevel')
-  expect(discovery?.init?.cwd).toBeUndefined()
+  expect(discovery.argv).toContain('--show-toplevel')
+  expect(discovery.init?.cwd).toBeUndefined()
   expect(pinned.length).toBeGreaterThan(0)
 
   for (const run of pinned) {
