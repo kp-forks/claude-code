@@ -14,9 +14,51 @@ source, published as it is built into the binary.
 Each folder is a complete plugin: `.claude-plugin/plugin.json`, a
 `hooks/hooks.json` naming the module, and TypeScript under `hooks/` typed
 against the declarations `/plugin-types` writes (`import type … from
-'claude-code'`). To read one running from source:
+'claude-code'`), kept here in `types/`. To read one running from source:
 
     claude --plugin-dir mods/diff
+
+## Testing
+
+A mod's tests are in its `tests/` folder, and run with
+
+    claude plugin test mods/diff
+
+A test gets the engine's own `$` and a plugin's `on`. Each call on `$` is one
+the engine makes, through every hook of the mod loaded as it ships. The hooks
+the test registers with `on` sit beneath the mod, where the rest of the world
+would be, and nothing is beneath them: a call they leave unanswered throws,
+naming its event.
+
+```ts
+import { expect, seat, test } from 'claude-code/testing'
+
+seat('builtin')
+
+test('outside a git repository /diff says so and opens nothing', async ($, on) => {
+  const opened: string[] = []
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('command.register', ($, e) => ({ value: { command: e.name } }))
+  on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: '' } }))
+  on('ui.open', ($, e, next) => {
+    opened.push(e.id)
+    return next(e)
+  })
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  const { text } = await $.command.run({
+    command: 'diff',
+    args: '',
+    origin: { kind: 'composer' },
+  })
+
+  expect(text).toContain('isn’t in a git repository')
+  expect(opened).toEqual([])
+})
+```
+
+`tsc -p mods/tsconfig.json` typechecks every mod's hooks and tests against
+`types/`.
 
 Early access: hooks modules load only where function hooks are enabled, and
 the API these mods are written against may change between releases without
