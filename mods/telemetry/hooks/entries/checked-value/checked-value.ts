@@ -60,7 +60,7 @@ export function checkedValue(
 
   if (!isTokenList) {
     throw refusal(
-      `props.${key}.of: a list of 1 to ${CHOICES_LIMIT} ` + `snake_case tokens`,
+      `props.${key}.of: a list of 1 to ${CHOICES_LIMIT} ` + `lowercase tokens`,
       method,
     )
   }
