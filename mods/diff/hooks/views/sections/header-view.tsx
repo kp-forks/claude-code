@@ -11,8 +11,9 @@ import { diffStat } from './diff-stat'
 
 /**
  * The pane's first line (ReplDiffSidebar's header row): `N files changed
- * +A -R`, or nothing over an empty state, and the close `✕` at the right
- * edge either way.
+ * +A -R`, or nothing over an empty state.
+ *
+ * The close `✕` sits at the right edge either way.
  *
  * @param kit the drawing's kit; its elements draw the line
  * @param totals the header's counts, or null when there is nothing to count

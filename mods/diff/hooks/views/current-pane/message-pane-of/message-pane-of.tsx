@@ -8,16 +8,11 @@ import Layout from '../../layout'
 
 /**
  * The pane while a message stands in for the list (ReplDiffSidebar's
- * centered body: the first fetch, the empty state, the too-many and
- * only-hidden states): the header block, the built-in's blank row under it,
- * the message with the pickers under it, the pre-session line.
+ * centered body): the header, a blank row, the message, the pickers.
  *
- * With nothing listed below and the rows to hold it, the message's lines
- * sit where the built-in centers them (half the spare rows above, rounded
- * down; each wrapped line centered on its own), the pickers right under
- * them and the pre-session line at the foot; otherwise it all stacks from
- * the top, the pickers on the blank row the built-in leaves above the
- * pre-session line (that blank row itself when there are none).
+ * With nothing listed below and room, the lines sit where the built-in
+ * centers them (half the spare rows above), the pickers under them;
+ * otherwise all stacks from the top, the pickers over the pre-session line.
  *
  * @param kit the elements, the width, the body's rows
  * @param pane the header block, the message's lines, the pickers, the

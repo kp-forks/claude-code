@@ -18,12 +18,9 @@ import { messagePaneOf } from './message-pane-of'
  * The pane over the repository's diff now (ReplDiffSidebarBody, one file's
  * body at a time): header, base line, todo bar, pickers, rows, detail.
  *
- * The tests-and-generated toggle sits above the rows; the elision count, the
- * withheld-untracked note, the pre-session line and rows below them, a blank
- * row above that line and above its rows as the built-in leaves; the
- * selected file last. With no rows to list, the loading line, the empty
- * state or the too-many and only-hidden lines take the body instead
- * (messagePaneOf), the header keeping only the close.
+ * The toggle sits above the rows; the elision count, withheld-untracked
+ * note and pre-session line below, with blank rows as the built-in leaves.
+ * With nothing to list, messagePaneOf draws the body, the header a close.
  *
  * @param kit the elements, the handlers, the width, the rows
  * @param model the pane's state

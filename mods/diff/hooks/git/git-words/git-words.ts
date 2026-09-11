@@ -1,9 +1,10 @@
 import type Backend from '../../backend'
 
 /**
- * The pane's git words: compared with HEAD, read by `git diff`, untracked
- * files listed by git and staged with `git add :/…`, unquoted as
- * DiffDetailView words it.
+ * The pane's git words, unquoted as DiffDetailView words them.
+ *
+ * Compared with HEAD, read by `git diff`, untracked files listed by git and
+ * staged with `git add :/…`.
  */
 export const GIT_WORDS: Backend.BackendWords = Object.freeze({
   base: 'HEAD',

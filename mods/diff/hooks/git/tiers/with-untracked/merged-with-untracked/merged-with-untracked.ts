@@ -3,10 +3,10 @@ import { mergedResultOf } from '../merged-result-of'
 
 /**
  * A tier's tracked rows and totals with a listed set of untracked rows
- * after them (gitDiff.ts mergeSessionUntrackedFiles), or flagged withheld
- * when the lister gave no whole listing.
+ * after them, or flagged withheld when the lister gave no whole listing.
  *
- * A path a tracked row already holds keeps that row and counts once.
+ * As the built-in's mergeSessionUntrackedFiles merges them, a path a
+ * tracked row already holds keeps that row and counts once.
  *
  * @param result the tier's tracked rows and totals
  * @param untracked the untracked rows, or null when their listing was withheld

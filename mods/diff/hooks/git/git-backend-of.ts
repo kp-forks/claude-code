@@ -11,9 +11,10 @@ import type Types from './types'
 
 /**
  * The git backend over the session's directory: the repository read with
- * one `rev-parse` in that directory, then every child pinned to it
- * (`--git-dir`, `--work-tree`, cwd the top) under the C locale and the
- * fetch's timeout (gitDiff.ts execPinnedGit).
+ * one `rev-parse` in that directory, then every child pinned to it.
+ *
+ * Each child runs with `--git-dir`, `--work-tree` and cwd the top, under
+ * the C locale and the fetch's timeout (the built-in's execPinnedGit).
  *
  * @param host the bound host's runner and probes
  * @returns the backend, or null outside a git working tree

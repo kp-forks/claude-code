@@ -7,8 +7,9 @@ import { WIDTH_BUCKETS } from './width-buckets'
 
 /**
  * The plugin's Recorder over the host: each row goes through the telemetry
- * built-in's `$.telemetry`, named and shaped as the built-in panel's own;
- * a missing noun or a refused row is dropped.
+ * built-in's `$.telemetry`, named and shaped as the built-in panel's own.
+ *
+ * A missing noun or a refused row is dropped.
  *
  * @param host the engine as session.start bound it
  * @returns the recorder

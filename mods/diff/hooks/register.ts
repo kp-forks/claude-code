@@ -21,11 +21,9 @@ import Views from './views'
  * Registers the diff pane: `/diff` once the built-in stands down, the
  * pane's drawing and refresh, its opening on Claude's first edit, the ask.
  *
- * `session.start` registers `/diff` (refused while the built-in holds it),
- * binds the host every pinned backend reads through, and pins the backend
- * (backendOf): one probe in flight, asked again on `/diff` until git answers.
- * On a terminal narrower than the built-in panel shows on, `/diff` answers
- * the built-in's resize line and opens nothing (paneToggleOf).
+ * `session.start` registers `/diff`, binds the host every pinned backend
+ * reads through (currentOf: the latest start's, the engine only before
+ * bind()), and pins the backend (backendOf), asked again on `/diff`.
  *
  * @param on the engine's registrar
  */
@@ -50,9 +48,6 @@ export function register(on: On) {
   const timers = new Map<'refresh' | 'redraw' | 'poll', Timer>()
   const loggedBaseKinds = new Set<'ok' | 'sad'>()
 
-  // The bound host once bind() has run (it sets `host` before pinning), so a
-  // backend pinned under one session.start keeps reading through whatever
-  // host a later session.start bound; `engine` only before that.
   const currentOf = (engine: Host): Host => host ?? engine
 
   const backendHostOf = (engine: Host): Backend.BackendHost => ({

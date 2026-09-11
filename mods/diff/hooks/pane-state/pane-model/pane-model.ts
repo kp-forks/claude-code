@@ -6,9 +6,11 @@ import type { BodyState } from '../body-state'
 import type { Source } from '../source'
 
 /**
- * Everything one drawing of the pane reads: the last good fetch, what the
- * person picked, the selected file's body, the transcript's turns and todos,
- * and the pinned backend's words and base modes (git's until one is pinned).
+ * Everything one drawing of the pane reads.
+ *
+ * The last good fetch, what the person picked, the selected file's body,
+ * the transcript's turns and todos, and the pinned backend's words and
+ * base modes (git's until one is pinned).
  */
 export type PaneModel = {
   words: Backend.BackendWords

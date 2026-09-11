@@ -2,9 +2,8 @@ import type Git from '../../../git'
 import type { BackendWords } from '../backend-words'
 
 /**
- * The version-control system behind the pane, pinned once per session:
- * where its working tree is, which comparisons it offers, how it words
- * them, and the three reads the pane makes of it.
+ * The version-control system behind the pane, pinned once per session: its
+ * working tree, what it compares, how it words them, and the pane's reads.
  *
  * Git is the plugin's own backend; a host may install probes for others,
  * consulted where no git working tree holds the directory (backendOf).
@@ -16,7 +15,7 @@ export type Backend = {
   repository: Pick<Git.Repository, 'toplevel'>
 
   /**
-   * The base modes the picker offers, in picker order.
+   * What the picker offers to compare against, in its order.
    */
   baseModes: readonly Git.BaseMode[]
 

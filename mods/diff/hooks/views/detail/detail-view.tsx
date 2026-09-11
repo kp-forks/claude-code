@@ -13,13 +13,12 @@ import { MAX_CODE_CHARS } from './max-code-chars'
 import { placeholderOf } from './placeholder-of'
 
 /**
- * The selected file under the list: its bold path and asides, each name
- * cut from its start to the width, the ask Button, the built-in's dim rule
- * under them, the body.
+ * The selected file under the list: its bold path and asides, the ask
+ * Button, the built-in's dim rule under them, the body.
  *
- * The body is a placeholder, or the hunks as the engine's diff `Code` blocks
- * (codeBlocksOf) named by the path, a dim divider where two meet at a hunk;
- * then the footer when anything was cut.
+ * Each name is cut from its start to the width. The body is a placeholder,
+ * or the hunks as the engine's diff `Code` blocks (codeBlocksOf), a dim
+ * divider where two meet, then the footer when anything was cut.
  *
  * @param kit the elements and the width
  * @param detail the selected file

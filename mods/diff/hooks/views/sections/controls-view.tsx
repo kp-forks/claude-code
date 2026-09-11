@@ -12,9 +12,8 @@ import { present } from './present'
  * turn with edits, newest first) and, for the current source, the base.
  *
  * The source picker draws only when a turn exists, as DiffDialog hides its
- * tabs; the base picker is the built-in's ctrl+x b cycle as a Select over
- * the modes the backend offers, uncommitted mode naming the base as the
- * base line does (modeLabelOf).
+ * tabs; the base picker is ctrl+x b's cycle as a Select over the backend's
+ * modes, uncommitted naming the base as the base line does (modeLabelOf).
  *
  * @param kit the elements and the handlers
  * @param model what is picked now and the turns to pick from

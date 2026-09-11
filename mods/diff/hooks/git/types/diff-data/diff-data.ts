@@ -6,8 +6,7 @@ import type { Repository } from '../repository'
 
 /**
  * One settled fetch: the rows, the totals, what they compare, and what a
- * file's hunks must be read against so both agree, over the working tree's
- * top (every backend has one; git's other directories stay its own).
+ * file's hunks are read against so both agree, over the working tree's top.
  *
  * `isUnborn`: a repository before its first commit (rows are the staged
  * and new files, `baseRef` is `--cached`); `stalePaths`: files whose staged

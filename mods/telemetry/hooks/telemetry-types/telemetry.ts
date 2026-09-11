@@ -13,11 +13,9 @@ export type Telemetry = {
    * Sends one event, `tengu_plugin_<event>`, as one first-party row;
    * resolves once the ingest accepted it.
    *
-   * The noun cannot see its caller, so the calling built-in names itself in
-   * `event` and this adds the prefix; an event already named `tengu_…`, a
-   * built-in port's own row, is sent under that name. A value is a finite
-   * number, a boolean or a Choice; free text is refused. One input, as every
-   * op on `$` takes.
+   * The calling built-in names itself in `event`; one already named `tengu_…`
+   * is sent as named. A value is a finite number, a boolean or a Choice; free
+   * text is refused. One input, as every op on `$` takes.
    *
    * @param entry the event's name, a snake_case token, and its properties by
    *   snake_case key

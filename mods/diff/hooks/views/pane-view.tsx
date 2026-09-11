@@ -15,10 +15,9 @@ import { turnPane } from './turn-pane'
  * The diff pane's body for one `ui.render`: the repository's diff now, or
  * the picked turn's edits while that turn still exists (a rewind drops it).
  *
- * Seated inline (no room beside the transcript), only the built-in's line
- * asking for a wider terminal, as the built-in shows no panel there. Docked,
- * the body keeps the built-in's blank row above the header and blank last
- * column, so its rows sit and wrap where the built-in's do.
+ * Seated inline, only the built-in's wider-terminal line, as it shows no
+ * panel there; docked, the built-in's blank row above the header and blank
+ * last column, so rows sit and wrap where the built-in's do.
  *
  * @param kit the elements, the handlers, the width
  * @param model the pane's state

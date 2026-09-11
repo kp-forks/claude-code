@@ -105,7 +105,7 @@ export type Host = {
   registerCommand: (spec: CommandSpec) => Promise<unknown>
 
   /**
-   * `$.session.id`: the session the pane-shown row is latched to.
+   * Which session the pane-shown row is latched to, as `$.session.id` says.
    */
   sessionId: () => Promise<string>
 

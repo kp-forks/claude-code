@@ -1,12 +1,14 @@
 import { cellWidth } from '../cell-width'
 
 /**
- * A line cut into rows of at most `columns` cells as Ink's `wrap` cuts the
- * built-in's empty state before it centers each row: at spaces, the space a
- * row breaks on kept at its end, a word wider than a row cut across rows.
+ * A line cut into rows as Ink's `wrap` cuts the built-in's empty state
+ * before it centers each row.
+ *
+ * It cuts at spaces, keeping the space a row breaks on at its end; a word
+ * wider than a row is cut across rows.
  *
  * @param text one sanitized line
- * @param columns the width, at least one cell
+ * @param columns the width, at least one cell; no row holds more
  * @returns the rows, at least one
  */
 export function wrappedLines(text: string, columns: number): string[] {
