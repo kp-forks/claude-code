@@ -30,32 +30,50 @@ the test registers with `on` sit beneath the mod, where the rest of the world
 would be, and nothing is beneath them: a call they leave unanswered throws,
 naming its event.
 
+A test file is named for what it covers under `hooks/` (`register.test.ts`
+beside `hooks/register.ts`, `git.test.ts` beside `hooks/git/`), and holds its
+imports, the tier the mod loads in, and one `describe` titled with that name;
+what several tests share sits under `tests/fixtures/`, one export a file.
+
 ```ts
-import { expect, test, tier } from 'claude-code/testing'
+import { describe, expect, memoryClock, test, tier } from 'claude-code/testing'
 
 tier('builtin')
 
-test('outside a git repository /diff says so and opens nothing', async ($, on) => {
-  const opened: string[] = []
-  on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('command.register', ($, e) => ({ value: { command: e.name } }))
-  on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: '' } }))
-  on('ui.open', ($, e, next) => {
-    opened.push(e.id)
-    return next(e)
-  })
+describe('register', () => {
+  test('outside a git repository /diff says so, opens nothing', async ($, on) => {
+    const opened: string[] = []
+    memoryClock(on)
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('command.register', ($, e) => ({ value: { command: e.name } }))
+    on('process.run', () => ({
+      value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' },
+    }))
+    on('ui.open', ($, e, next) => {
+      opened.push(e.id)
+      return next(e)
+    })
 
-  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
-  const { text } = await $.command.run({
-    command: 'diff',
-    args: '',
-    origin: { kind: 'composer' },
-  })
+    await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+    const { text } = await $.command.run({
+      command: 'diff',
+      args: '',
+      origin: { kind: 'composer' },
+    })
 
-  expect(text).toContain("isn't in a git repository")
-  expect(opened).toEqual([])
+    expect(text).toContain("isn't in a git repository")
+    expect(opened).toEqual([])
+  })
 })
 ```
+
+The kit's helpers are plain functions over `on`, each answering one noun
+beneath the mod where the test calls it: `memoryEnv(on, variables)` for
+`$.env`, `memoryStore(on, entries)` for `$.store`, and `memoryClock(on)` for
+`$.clock`, whose `advance(ms)` resolves every wait the mod asked for
+(`$.clock.sleep`, `after`, `every`) as the clock crosses it. `textOf(tree)`
+reads a rendered tree's text, and `$.ui.press({ plugin, key })` presses a
+`Button` the test rendered, as a click in the terminal does.
 
 `tsc -p mods/tsconfig.json` typechecks every mod's hooks and tests against
 `types/`.
