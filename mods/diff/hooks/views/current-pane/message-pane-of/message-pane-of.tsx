@@ -49,8 +49,7 @@ export function messagePaneOf(
   const middleRows = kit.rows - top.length - 1 - (earlier === null ? 0 : 3)
   const above = Math.floor((middleRows - lines.length) / 2)
   const isCentered =
-    rest.length === 0 &&
-    middleRows - above - lines.length >= controlRows.length
+    rest.length === 0 && middleRows - above - lines.length >= controlRows.length
 
   if (!isCentered) {
     return (

@@ -8,7 +8,10 @@ import { ASK_CUT_NOTE } from './ask-cut-note.js'
  * @param room the characters the context has left
  * @returns the text to attach, or undefined when not even its first line fits
  */
-export function fittedAskTextOf(text: string, room: number): string | undefined {
+export function fittedAskTextOf(
+  text: string,
+  room: number,
+): string | undefined {
   if (text.length <= room) {
     return text
   }
