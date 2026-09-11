@@ -1,3 +1,4 @@
+import type TelemetryTypes from '../../telemetry-types'
 import { CHOICE_TOKEN } from '../choice-token'
 import { CHOICES_LIMIT } from '../choices-limit'
 import { isRecord } from '../is-record'
@@ -11,12 +12,14 @@ import { refusal } from '../refusal'
  *
  * @param key the property's key, named in a refusal
  * @param value what the caller passed under it
+ * @param method the method the property was passed to, named in a refusal
  * @returns the value as stored: the boolean or finite number unchanged, or the
  *          chosen member when value is a Choice
  */
 export function checkedValue(
   key: string,
   value: unknown,
+  method: TelemetryTypes.Method = 'log',
 ): string | number | boolean {
   if (typeof value === 'boolean') {
     return value
@@ -27,13 +30,14 @@ export function checkedValue(
       return value
     }
 
-    throw refusal(`props.${key}: a number is finite`)
+    throw refusal(`props.${key}: a number is finite`, method)
   }
 
   if (typeof value === 'string') {
     throw refusal(
       `props.${key}: free text is refused; a string is a Choice, ` +
         `{ value, of: [...] }`,
+      method,
     )
   }
 
@@ -41,6 +45,7 @@ export function checkedValue(
     throw refusal(
       `props.${key}: a value is a finite number, a boolean, or a Choice, ` +
         `{ value, of: [...] }`,
+      method,
     )
   }
 
@@ -55,12 +60,13 @@ export function checkedValue(
 
   if (!isTokenList) {
     throw refusal(
-      `props.${key}.of: a list of 1 to ${CHOICES_LIMIT} ` + `snake_case tokens`,
+      `props.${key}.of: a list of 1 to ${CHOICES_LIMIT} ` + `lowercase tokens`,
+      method,
     )
   }
 
   if (typeof chosen !== 'string' || !members.includes(chosen)) {
-    throw refusal(`props.${key}.value: one of the members of \`of\``)
+    throw refusal(`props.${key}.value: one of the members of \`of\``, method)
   }
 
   return chosen

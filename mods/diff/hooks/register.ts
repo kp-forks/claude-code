@@ -61,7 +61,12 @@ export function register(on: On) {
       const isError = base.kind === 'error'
       const outcome: Record.MarkOutcome = isError
         ? { kind: 'sad', reason: base.reason }
-        : { kind: 'ok' }
+        : {
+            kind: 'ok',
+            props: {
+              outcome: { value: base.kind, of: Record.BASE_OUTCOMES },
+            },
+          }
 
       if (!loggedBaseKinds.has(outcome.kind)) {
         loggedBaseKinds.add(outcome.kind)
@@ -148,7 +153,7 @@ export function register(on: On) {
       model.selectedPath,
     )
 
-  async function loadBody(engine: Host): Promise<void> {
+  async function loadBody(engine: Host): Promise<boolean> {
     const { data } = model
     const selected = selectedOf()
 
@@ -156,13 +161,13 @@ export function register(on: On) {
       bodyKey = null
       model = { ...model, body: null, bodyState: 'idle' }
 
-      return
+      return false
     }
 
     const key = `${generation}|${data.baseRef}|${selected.path}`
 
     if (key === bodyKey) {
-      return
+      return false
     }
 
     bodyKey = key
@@ -171,11 +176,13 @@ export function register(on: On) {
     const body = await backend.fetchFileHunks(data, selected)
 
     if (bodyKey !== key) {
-      return
+      return body === null
     }
 
     model = { ...model, body, bodyState: body ? 'ready' : 'failed' }
     redraw(engine)
+
+    return body === null
   }
 
   function startPoll(engine: Host, pinned: Backend.Backend) {
@@ -240,7 +247,6 @@ export function register(on: On) {
           })
           break
         case 'data':
-          record.mark(Record.FEATURES.read, { kind: 'ok' })
           generation += 1
 
           if (pinned) {
@@ -250,7 +256,23 @@ export function register(on: On) {
           break
       }
 
-      await loadBody(engine)
+      const hasHunksFailed = await loadBody(engine)
+
+      if (outcome.kind === 'data') {
+        record.mark(
+          Record.FEATURES.read,
+          hasHunksFailed
+            ? { kind: 'sad', reason: 'git_hunks_failed' }
+            : { kind: 'ok' },
+        )
+      }
+    } catch (error) {
+      record.mark(Record.FEATURES.read, {
+        kind: 'sad',
+        reason: 'git_diff_threw',
+      })
+
+      throw error
     } finally {
       isRefreshing = false
       redraw(engine)
@@ -281,13 +303,11 @@ export function register(on: On) {
     const isManual = trigger === 'manual'
     await engine.openPane(isManual ? { ...pane, ...Names.FOCUSED_PANE } : pane)
     isPaneOpen = true
-    const record = Record.recorderOf(engine)
-    record.mark(Record.FEATURES.tabSwitch, { kind: 'ok' })
     const sessionId = await engine.sessionId().catch(() => null)
 
     if (sessionId !== null && sessionId !== shownSessionId) {
       shownSessionId = sessionId
-      record.shown(trigger, Record.widthBucketOf(columns))
+      Record.recorderOf(engine).shown(trigger, Record.widthBucketOf(columns))
     }
 
     void refresh(engine)
@@ -296,7 +316,13 @@ export function register(on: On) {
   async function closePane(engine: Host): Promise<void> {
     await engine.closePane({ id: Names.PANE_ID })
     isPaneOpen = false
-    Record.recorderOf(engine).mark(Record.FEATURES.tabSwitch, { kind: 'ok' })
+  }
+
+  function markTabSwitch(engine: Host, tab: (typeof Record.TABS)[number]) {
+    Record.recorderOf(engine).mark(Record.FEATURES.tabSwitch, {
+      kind: 'ok',
+      props: { tab: { value: tab, of: Record.TABS } },
+    })
   }
 
   async function wasDrawnWhenProbed(engine: Host): Promise<boolean> {
@@ -367,6 +393,7 @@ export function register(on: On) {
       model = { ...model, requestedMode: mode, body: null, bodyState: 'idle' }
       Record.recorderOf(engine).mark(Record.FEATURES.baseSwitch, {
         kind: 'ok',
+        props: { mode: { value: mode, of: model.baseModes } },
       })
       const toplevel = model.data?.repository.toplevel
 
@@ -401,6 +428,7 @@ export function register(on: On) {
     },
     close: () => {
       void closePane(engine)
+        .then(() => markTabSwitch(engine, 'convo'))
         .then(() => engine.storeSet(Names.STORE_OPEN_KEY, false))
         .catch(() => undefined)
     },
@@ -525,6 +553,7 @@ export function register(on: On) {
 
     const isOpening = toggle === 'open'
     await (isOpening ? openPane(host, 'manual') : closePane(host))
+    markTabSwitch(host, isOpening ? 'diff' : 'convo')
     await host.storeSet(Names.STORE_OPEN_KEY, isOpening).catch(() => undefined)
 
     return {}
