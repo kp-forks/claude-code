@@ -1,7 +1,7 @@
+import { CHOICE_TOKEN } from '../choice-token'
 import { CHOICES_LIMIT } from '../choices-limit'
 import { isRecord } from '../is-record'
 import { refusal } from '../refusal'
-import { TOKEN } from '../token'
 
 /**
  * One property's value as it goes into the metadata: a finite number, a
@@ -49,7 +49,9 @@ export function checkedValue(
   const isTokenList =
     members.length > 0 &&
     members.length <= CHOICES_LIMIT &&
-    members.every(member => typeof member === 'string' && TOKEN.test(member))
+    members.every(
+      member => typeof member === 'string' && CHOICE_TOKEN.test(member),
+    )
 
   if (!isTokenList) {
     throw refusal(
