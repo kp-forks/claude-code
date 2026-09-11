@@ -2,8 +2,10 @@
  * The feature names the plugin marks, kept as the built-in panel's so the
  * feature surface keeps one series across the swap.
  *
- * `read` per fetch round, `tabSwitch` per open or close, `baseSwitch` per
- * base pick, `baseResolve` once a session, `selectionAttach` per diff asked.
+ * `read` per fetch round, `tabSwitch` per `/diff` open or close and per
+ * close by the pane's own control, `baseSwitch` per base pick, `baseResolve`
+ * on the first resolve and the first failure, `selectionAttach` per diff
+ * asked.
  */
 export const FEATURES = {
   read: 'repl_diff_read',

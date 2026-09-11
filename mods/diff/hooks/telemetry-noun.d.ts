@@ -34,13 +34,14 @@ declare module 'claude-code' {
   }
 
   /**
-   * What `$.telemetry.mark` takes: the feature, how it went, and why when
-   * not ok.
+   * What `$.telemetry.mark` takes: the feature, how it went, why when not
+   * ok, and the properties the row carries beside them by snake_case key.
    */
   type DiffTelemetryMarkEntry = {
     feature: string
     kind: DiffTelemetryMarkKind
     reason?: string
+    props?: Readonly<Record<string, DiffTelemetryProp>>
   }
 
   interface EngineInterface {
