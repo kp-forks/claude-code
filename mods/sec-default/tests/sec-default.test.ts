@@ -142,7 +142,7 @@ test(
 )
 
 test(
-  'with no allowlist, the person’s plugin adds its tool',
+  'with no allowlist, a plugin the person installed adds its tool',
   { plugins: [registering('mine')] },
   async ($, on) => {
     on('settings.read', () => ({ value: NO_ALLOWLIST }))
@@ -168,7 +168,7 @@ test(
 )
 
 test(
-  'the organization’s tools are listed as its tiers listed them',
+  'the organization tools are listed as its tiers listed them',
   { plugins: [relabeling, listing] },
   async ($, on) => {
     on('settings.read', () => ({ value: ALLOWLIST }))
@@ -184,7 +184,7 @@ test(
 )
 
 test(
-  'a prompt section continues past the person’s plugins, not the organization’s',
+  'a prompt section skips the plugins the person installed, never the organization ones',
   { plugins: [dropping, signing] },
   async ($, on) => {
     on('prompt.section', ($, e) => ({ text: e.text }))

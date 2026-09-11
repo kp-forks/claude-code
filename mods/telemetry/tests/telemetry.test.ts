@@ -74,7 +74,7 @@ function batchOf(post: Args<'http.fetch'>): unknown {
 }
 
 test(
-  'a plugin’s $.telemetry.log posts one first-party row',
+  'a $.telemetry.log call from a plugin posts one first-party row',
   { plugins: [recording] },
   async ($, on) => {
     memoryEnv(on, { USER_TYPE: 'ant' })

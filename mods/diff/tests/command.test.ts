@@ -37,11 +37,11 @@ test('outside a git repository /diff says so and opens nothing', async ($, on) =
   await $.session.start(SESSION)
   const { text } = await $.command.run(DIFF)
 
-  expect(text).toContain('isn’t in a git repository')
+  expect(text).toMatch(/isn.t in a git repository/)
   expect(opened).toEqual([])
 })
 
-test('a git that never answers is not “no repository”', async ($, on) => {
+test('a git that never answers is not "no repository"', async ($, on) => {
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('process.run', () => ({
@@ -51,7 +51,7 @@ test('a git that never answers is not “no repository”', async ($, on) => {
   await $.session.start(SESSION)
   const { text } = await $.command.run(DIFF)
 
-  expect(text).toContain('git didn’t answer')
+  expect(text).toMatch(/git didn.t answer/)
 })
 
 test('with the built-in holding /diff, the plugin stands down', async ($, on) => {

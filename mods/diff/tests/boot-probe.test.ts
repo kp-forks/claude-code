@@ -46,13 +46,13 @@ test('/diff at boot joins the boot probe, then asks again', async ($, on) => {
   const ran = $.command.run(DIFF)
   await clock.advance(0)
 
-  expect(probes, 'the boot’s probe, which /diff joined').toHaveLength(1)
+  expect(probes, 'the boot probe, which /diff joined').toHaveLength(1)
 
   await clock.advance(GIT_TIMEOUT_MS)
   await booting
 
   expect(await ran).toEqual({
-    text: expect.stringContaining('isn’t in a git repository'),
+    text: expect.stringMatching(/isn.t in a git repository/),
   })
   expect(probes, 'then one more of its own').toHaveLength(2)
 })

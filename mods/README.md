@@ -52,7 +52,7 @@ test('outside a git repository /diff says so and opens nothing', async ($, on) =
     origin: { kind: 'composer' },
   })
 
-  expect(text).toContain('isn’t in a git repository')
+  expect(text).toMatch(/isn.t in a git repository/)
   expect(opened).toEqual([])
 })
 ```

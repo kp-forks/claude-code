@@ -121,7 +121,7 @@ function inRepository(on: On) {
   return { runs, opened, closed }
 }
 
-test('/diff opens the pane over the session’s changes', async ($, on) => {
+test('/diff opens the pane over the changes in the session', async ($, on) => {
   const world = inRepository(on)
 
   await $.session.start(SESSION)
@@ -158,7 +158,7 @@ test('every git child is pinned to the repository and reads the C locale', async
   }
 })
 
-test('Claude’s first edit opens the pane on a wide terminal', async ($, on) => {
+test('the first edit Claude makes opens the pane on a wide terminal', async ($, on) => {
   const world = inRepository(on)
   on('tool.call', () => ({ result: 'edited' }))
 
