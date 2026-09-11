@@ -10,49 +10,37 @@ import { expect, memoryEnv, seat, test } from 'claude-code/testing'
 
 seat('builtin')
 
-const SURVEY: CommandRunInput = {
-  command: 'survey',
-  args: '',
-  origin: { kind: 'composer' },
-}
-const SHOWN: CommandRunInput = {
-  command: 'shown',
-  args: '',
-  origin: { kind: 'composer' },
-}
 const BEARER: SessionAuthorization = { handle: 'the-handle', kind: 'bearer' }
 const ACCEPTED: HttpResponse = { status: 200, ok: true, headers: {}, text: '' }
 
 /**
- * A plugin that records through `$.telemetry`: `/survey` logs an answered
- * survey, `/shown` a row under the built-in panel's own name; each answers
- * "sent", or why the row was refused.
+ * `/record <event>`, which the recording plugin answers.
+ */
+const record = (event: string): CommandRunInput => ({
+  command: 'record',
+  args: event,
+  origin: { kind: 'composer' },
+})
+
+/**
+ * A plugin whose `/record <event>` logs that event through `$.telemetry`,
+ * answering "sent", or why the row was refused.
  */
 const recording: Plugin = {
   name: 'recording',
   register(on) {
-    on('command.run', { command: 'survey' }, $ =>
-      $.telemetry
-        .log({ event: 'survey_answered', props: { answer: 2, seen: true } })
-        .then(
-          () => ({ text: 'sent' }),
-          (error: unknown) => ({ text: String(error) }),
-        ),
-    )
-    on('command.run', { command: 'shown' }, $ =>
-      $.telemetry
-        .log({ event: 'tengu_repl_diff_panel_shown', props: { seen: true } })
-        .then(
-          () => ({ text: 'sent' }),
-          (error: unknown) => ({ text: String(error) }),
-        ),
+    on('command.run', { command: 'record' }, ($, e) =>
+      $.telemetry.log({ event: e.args, props: { answer: 2, seen: true } }).then(
+        () => ({ text: 'sent' }),
+        (error: unknown) => ({ text: String(error) }),
+      ),
     )
   },
 }
 
 /**
  * A first-party session: its id and model, the credential it holds, and
- * the ingest accepting each row, which is kept as it was posted.
+ * the ingest accepting each row, each post kept as it was made.
  */
 function firstPartySession(
   on: On,
@@ -72,13 +60,10 @@ function firstPartySession(
 }
 
 /**
- * The one row a post to the ingest carries.
+ * The batch a post to the ingest carries, as it was sent.
  */
-function rowOf(post: Args<'http.fetch'> | undefined) {
-  const batch: { events: { event_data: Readonly<Record<string, unknown>> }[] } =
-    JSON.parse(String(post?.init?.body))
-
-  return batch.events[0]?.event_data
+function batchOf(post: Args<'http.fetch'>): unknown {
+  return JSON.parse(String(post.init?.body))
 }
 
 test(
@@ -88,14 +73,25 @@ test(
     memoryEnv(on, { USER_TYPE: 'ant' })
     const posts = firstPartySession(on)
 
-    expect(await $.command.run(SURVEY)).toEqual({ text: 'sent' })
+    expect(await $.command.run(record('survey_answered'))).toEqual({
+      text: 'sent',
+    })
     expect(posts).toHaveLength(1)
-    expect(posts[0]?.init).toMatchObject({ method: 'POST', auth: 'the-handle' })
-    expect(rowOf(posts[0])).toMatchObject({
-      event_name: 'tengu_plugin_survey_answered',
-      session_id: 'the-session',
-      model: 'the-model',
-      user_type: 'ant',
+
+    const [post] = posts
+
+    expect(post.init).toMatchObject({ method: 'POST', auth: 'the-handle' })
+    expect(batchOf(post)).toMatchObject({
+      events: [
+        {
+          event_data: {
+            event_name: 'tengu_plugin_survey_answered',
+            session_id: 'the-session',
+            model: 'the-model',
+            user_type: 'ant',
+          },
+        },
+      ],
     })
   },
 )
@@ -107,12 +103,20 @@ test(
     memoryEnv(on, {})
     const posts = firstPartySession(on)
 
-    await $.command.run(SHOWN)
+    await $.command.run(record('tengu_repl_diff_panel_shown'))
 
-    expect(rowOf(posts[0])).toMatchObject({
-      event_name: 'tengu_repl_diff_panel_shown',
-      user_type: 'external',
-    })
+    expect(posts.map(batchOf)).toMatchObject([
+      {
+        events: [
+          {
+            event_data: {
+              event_name: 'tengu_repl_diff_panel_shown',
+              user_type: 'external',
+            },
+          },
+        ],
+      },
+    ])
   },
 )
 
@@ -123,7 +127,9 @@ test(
     memoryEnv(on, { DO_NOT_TRACK: '1' })
     const posts = firstPartySession(on)
 
-    expect(await $.command.run(SURVEY)).toEqual({ text: 'sent' })
+    expect(await $.command.run(record('survey_answered'))).toEqual({
+      text: 'sent',
+    })
     expect(posts).toEqual([])
   },
 )
@@ -135,7 +141,7 @@ test(
     memoryEnv(on, { CLAUDE_CODE_USE_BEDROCK: '1' })
     const posts = firstPartySession(on)
 
-    await $.command.run(SURVEY)
+    await $.command.run(record('survey_answered'))
 
     expect(posts).toEqual([])
   },
@@ -147,7 +153,7 @@ test(
   async ($, on) => {
     memoryEnv(on, {})
     const posts = firstPartySession(on, null)
-    const { text } = await $.command.run(SURVEY)
+    const { text } = await $.command.run(record('survey_answered'))
 
     expect(text).toEndWith(
       '$.telemetry.log: this session has no first-party credential to ' +
