@@ -19,7 +19,7 @@ export type Host = {
   /**
    * `$.clock.now`.
    */
-  now: () => number
+  now: () => Promise<number>
 
   /**
    * `$.clock.after`.

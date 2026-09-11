@@ -14,7 +14,7 @@ export type BackendHost = Pick<Host, 'run' | 'readFile'> &
     /**
      * The engine's clock, in milliseconds (`$.clock.now`).
      */
-    nowMs: () => number
+    nowMs: () => Promise<number>
 
     /**
      * When the current session began, read at each fetch.

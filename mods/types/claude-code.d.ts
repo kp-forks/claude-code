@@ -19,7 +19,8 @@
 // Also here: 'claude-code/testing', the kit a plugin's *.test.ts files
 // import under `claude plugin test <dir>`: `test(name, async ($, on) =>
 // { ... })`, where `$` is the engine's own and the hooks `on` registers
-// sit beneath every plugin; with tier, describe, expect and clock.
+// sit beneath every plugin; with tier, describe, expect, textOf and the
+// memory helpers (memoryEnv, memoryStore, memoryClock).
 //
 // Typing a plugin against it:
 //   export const register: Register = (on, options) => { ... }
@@ -1056,6 +1057,17 @@ declare module 'claude-code' {
        * answering `{ props }` hands this instance its next props.
        */
       post: (data: JsonValue) => void;
+  };
+
+  /**
+   * The argument of the `$.clock` waits (`sleep`, `after`, `every`): how long,
+   * in milliseconds, before the dispatch resolves.
+   */
+  type ClockWait = {
+      /**
+       * The wait, a non-negative number of milliseconds.
+       */
+      ms: number;
   };
 
   /**
@@ -2115,16 +2127,21 @@ declare module 'claude-code' {
           keys: () => Promise<string[]>;
       };
       /**
-       * Timers, run where the plugin's environment lives (no host round trip).
+       * The time and timers, each an event through the host: `clock.now` reads
+       * the time; `clock.sleep`, `after` and `every` wait until it has passed.
        *
-       * A timer's callback is the plugin's own function, and a hot reload of the
-       * plugin drops its pending timers with the old environment.
+       * A timer's callback is the plugin's own function, kept in its environment
+       * and run there when the wait resolves; a hot reload of the plugin cancels
+       * its pending waits with the old environment.
        */
       clock: {
           /**
-           * Returns milliseconds since the epoch, now.
+           * Resolves milliseconds since the epoch, now.
+           *
+           * @example
+           * const startedAt = await $.clock.now()
            */
-          now: () => number;
+          now: () => Promise<number>;
           /**
            * Resolves after `ms` milliseconds; rejects at once when `signal` aborts.
            *
@@ -2137,13 +2154,19 @@ declare module 'claude-code' {
           sleep: (ms: number, options?: SleepOptions) => Promise<void>;
           /**
            * Calls `fn` once after `ms` milliseconds; `cancel()` before then stops it.
+           *
+           * One `clock.after` dispatch: `fn` runs when it resolves, and never when
+           * a hook refuses it.
            */
           after: TimerCall;
           /**
-           * Calls `fn` every `ms` milliseconds until `cancel()`.
+           * Calls `fn` every `ms` milliseconds (at least 1) until `cancel()`.
+           *
+           * One `clock.every` dispatch per period: `fn` runs when it resolves and
+           * the next period is asked; a refused period ends the interval.
            *
            * @example
-           * const tick = $.clock.every(1000, () => $.ui.status(`${$.clock.now()}`))
+           * const tick = $.clock.every(1000, () => $.ui.status("polling"))
            */
           every: TimerCall;
       };
@@ -4220,6 +4243,25 @@ declare module 'claude-code' {
        */
       'store.keys': NoArgs;
       /**
+       * The argument of `$.clock.now()`.
+       */
+      'clock.now': NoArgs;
+      /**
+       * The argument of `$.clock.sleep(ms, { signal })`; the signal does not
+       * cross, it aborts the dispatch.
+       */
+      'clock.sleep': ClockWait;
+      /**
+       * The argument of `$.clock.after(ms, fn)`: the wait before `fn`, which
+       * stays in the plugin's environment and runs once the dispatch resolves.
+       */
+      'clock.after': ClockWait;
+      /**
+       * The argument of `$.clock.every(ms, fn)`, dispatched once per period:
+       * `fn` runs each time a dispatch resolves, and the next period is asked.
+       */
+      'clock.every': ClockWait;
+      /**
        * The argument of `$.http.fetch(url, init)`.
        */
       'http.fetch': {
@@ -4312,6 +4354,13 @@ declare module 'claude-code' {
       'store.set': void;
       'store.delete': void;
       'store.keys': string[];
+      /**
+       * Milliseconds since the epoch.
+       */
+      'clock.now': number;
+      'clock.sleep': void;
+      'clock.after': void;
+      'clock.every': void;
       'http.fetch': HttpResponse;
       'process.run': ProcessRunResult;
       'settings.read': Settings;
@@ -8275,10 +8324,27 @@ declare module 'claude-code/testing' {
         ) => Promise<import('claude-code').ResultOf[E]>
 
   /**
+   * What `$.ui.press` takes: the plugin whose `ui.render` hook drew the
+   * Button, the `key` it gave it, and, when it drew one under that key in
+   * several instances, the `requestId` of the one meant.
+   */
+  export type PressTarget = {
+    plugin: string
+    key: string
+    requestId?: string
+  }
+
+  /**
    * The engine's `$`: every call a test makes on it is the engine's own,
    * as the REPL, the query loop and the render sites make theirs. `next.origin`
    * is the engine, and the whole chain runs over the plugins loaded. A tool
    * call's `tool_use_id` is minted when left out, as the engine mints it.
+   *
+   * `$.ui.press(target)` is the terminal pressing a Button a test rendered:
+   * the `ui.press` chain over every plugin hooked on it, the Button's own
+   * `onPress` at the bottom, as a click or its hotkey runs it. It resolves
+   * to what the chain settled on, and rejects when no Button of that plugin
+   * and key is drawn on the terminal, or several are and no instance is named.
    */
   export type Engine = {
     [N in keyof import('claude-code').EventCalls]: {
@@ -8288,7 +8354,13 @@ declare module 'claude-code/testing' {
         : V]: `${N}.${V}` extends 'tool.call' | 'ui.render'
         ? import('claude-code').EventCalls[N][V]
         : EngineCall<`${N}.${V}` & import('claude-code').EventName>
-    }
+    } & (N extends 'ui'
+      ? {
+          press(
+            target: PressTarget,
+          ): Promise<import('claude-code').ResultOf['ui.press'] | undefined>
+        }
+      : {})
   }
 
   /**
@@ -8342,19 +8414,6 @@ declare module 'claude-code/testing' {
   export function tier(tier: Exclude<import('claude-code').Tier, 'core'>): void
 
   /**
-   * The time `$.clock` reads in a test, which moves only when the test says:
-   * `$.clock` is no event, so no hook can answer it. `advance` fires each
-   * timer due on the way, in order, letting what each started run; `sleep`
-   * resolves once the clock has been advanced that far, as a test's hook may
-   * wait to answer late. It starts at 0.
-   */
-  export const clock: {
-    now(): number
-    advance(ms: number): Promise<void>
-    sleep(ms: number): Promise<void>
-  }
-
-  /**
    * A rendered tree's text as it reads: its strings, in order.
    */
   export function textOf(tree: unknown): string
@@ -8377,6 +8436,59 @@ declare module 'claude-code/testing' {
     on: import('claude-code').On,
     entries?: Readonly<Record<string, unknown>>,
   ): void
+
+  /**
+   * The clock `memoryClock` hands back: the time its hooks answer, and the
+   * only ways it moves.
+   */
+  export type MemoryClock = {
+    /**
+     * The time now, in milliseconds: what `$.clock.now()` resolves beneath
+     * the plugins.
+     */
+    now(): number
+
+    /**
+     * Moves the clock `ms` on. Each wait due on the way (`$.clock.sleep`,
+     * `after`, `every`, and this clock's own `sleep`) resolves in the
+     * order it comes due, the clock reading its time as it does, and what
+     * each started runs before the next; an interval's next period, asked as
+     * one resolves, comes due in the same advance when it fits.
+     */
+    advance(ms: number): Promise<void>
+
+    /**
+     * Moves the clock to `ms`, at or past now, as `advance` would; it does
+     * not run backwards.
+     */
+    set(ms: number): Promise<void>
+
+    /**
+     * Resolves once the clock has moved `ms` past now: how a hook of the
+     * test's answers late (a git that hangs until its timeout).
+     */
+    sleep(ms: number): Promise<void>
+  }
+
+  /**
+   * Answers `$.clock` beneath the plugins from a clock in memory that starts
+   * at `now` (0 when unsaid) and moves only when the test moves it:
+   * `clock.now` reads it, and each `clock.sleep`, `clock.after` and
+   * `clock.every` is held until an `advance` crosses the time it is due,
+   * or dropped when its dispatch aborts (a timer's `cancel()`, an unload).
+   * Hooks of the test's, visible where called; a wait nothing answers meets
+   * the bottom hook like any event, and one held longer than a hook's budget
+   * (ten seconds of real time) is let go as a hook that overran.
+   *
+   * @example
+   * const clock = memoryClock(on)
+   * await $.session.start(SESSION)
+   * await clock.advance(1000)
+   */
+  export function memoryClock(
+    on: import('claude-code').On,
+    options?: { now?: number },
+  ): MemoryClock
 
   /**
    * A class, as `toThrow`, `toBeInstanceOf` and `expect.any` take it.

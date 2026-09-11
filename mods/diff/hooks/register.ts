@@ -423,7 +423,7 @@ export function register(on: On) {
   }
 
   async function bind(engine: Host): Promise<void> {
-    sessionStartMs = engine.now()
+    sessionStartMs = await engine.now()
 
     try {
       await engine.registerCommand(COMMAND_SPEC)
