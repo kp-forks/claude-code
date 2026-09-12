@@ -76,7 +76,36 @@ crosses it. `$.ui.press({ plugin, key })` presses a `Button` the test
 rendered, as a click in the terminal does.
 
 `tsc -p mods/tsconfig.json` typechecks every mod's hooks and tests against
-`types/`.
+`types/` and each mod's own `types/` contract.
+
+## Composing mods: noun contracts
+
+A mod that adds a noun to `$` in the `engine.create` fold owns that noun's
+types, and keeps them in one place: its `types/index.d.ts`, an ambient file
+with no imports that merges into `claude-code`, declaring the noun on
+`EngineInterface` and exporting the types it is made of, each named for the
+noun (`telemetry/types/index.d.ts` declares `$.telemetry` and exports
+`Telemetry`, `TelemetryLogEntry`, `TelemetryMarkEntry` and the rest).
+
+- The contract is the only declaration of the noun. The mod's own hooks
+  import its types from `claude-code` (`import type { Telemetry } from
+  'claude-code'`), and the value its `engine.create` hook returns is checked
+  against `EngineInterface['telemetry']`, so the implementation cannot drift
+  from what callers read.
+- A mod that calls another's noun reads the same file and never copies it:
+  `mods/tsconfig.json` includes `*/types/**/*.d.ts`, so `$.telemetry.log(…)`
+  in `diff` types against `telemetry`'s contract as it stands.
+- A test of a mod that calls another's noun seats a provider for it, an inline
+  plugin whose `engine.create` hook adds the noun, and answers the calls the
+  way it answers the engine's: `on('telemetry.log', ($, e) => ({ value:
+  undefined }))` runs above the provider's own method, its `e` typed by the
+  contract. With no provider loaded the `$` build refuses the hook, naming the
+  noun nobody provides.
+
+A plugin outside this repository that depends on a mod's noun points its
+tsconfig `include` at that mod's `types/` folder for now; once the engine
+writes the contracts of the plugins a session has installed, `/plugin-types`
+will put them beside `claude-code.d.ts` and the include goes away.
 
 Early access: hooks modules load only where function hooks are enabled, and
 the API these mods are written against may change between releases without

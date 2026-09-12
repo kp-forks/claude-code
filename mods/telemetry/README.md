@@ -28,8 +28,9 @@ string named together with the list it is chosen from), under `log` and
 the last two and refused on the first. An entry that breaks a rule is
 refused before anything is sent.
 
-`hooks/register.ts` is the module; `hooks/telemetry-types/` is the noun's
-type as a caller sees it.
+`hooks/register.ts` is the module; `types/index.d.ts` is the noun's contract,
+the one declaration of `$.telemetry` that this mod's hooks, a mod calling the
+noun and a test answering it all read.
 
 ## What it hooks
 

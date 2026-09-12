@@ -1,4 +1,5 @@
-import type TelemetryTypes from '../../telemetry-types'
+import type { TelemetryMarkKind } from 'claude-code'
+
 import type { Fields } from '../fields'
 
 /**
@@ -6,7 +7,7 @@ import type { Fields } from '../fields'
  * and its properties as they go into the row.
  */
 export type Mark = {
-  kind: TelemetryTypes.MarkKind
+  kind: TelemetryMarkKind
   feature: string
   reason?: string
   props: Fields['props']

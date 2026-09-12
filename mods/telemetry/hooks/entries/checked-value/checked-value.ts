@@ -1,7 +1,7 @@
-import type TelemetryTypes from '../../telemetry-types'
 import { CHOICE_TOKEN } from '../choice-token'
 import { CHOICES_LIMIT } from '../choices-limit'
 import { isRecord } from '../is-record'
+import type { Method } from '../method'
 import { refusal } from '../refusal'
 
 /**
@@ -19,7 +19,7 @@ import { refusal } from '../refusal'
 export function checkedValue(
   key: string,
   value: unknown,
-  method: TelemetryTypes.Method = 'log',
+  method: Method = 'log',
 ): string | number | boolean {
   if (typeof value === 'boolean') {
     return value

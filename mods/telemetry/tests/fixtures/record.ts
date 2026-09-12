@@ -1,6 +1,4 @@
-import type { CommandRunInput } from 'claude-code'
-
-import type { LogEntry } from '../../hooks/telemetry-types'
+import type { CommandRunInput, TelemetryLogEntry } from 'claude-code'
 
 /**
  * The command that has the recording plugin log an entry, typed as the
@@ -9,7 +7,7 @@ import type { LogEntry } from '../../hooks/telemetry-types'
  * @param entry what to log
  * @returns `/record <entry>`
  */
-export const record = (entry: LogEntry): CommandRunInput => ({
+export const record = (entry: TelemetryLogEntry): CommandRunInput => ({
   command: 'record',
   args: JSON.stringify(entry),
   origin: { kind: 'composer' },

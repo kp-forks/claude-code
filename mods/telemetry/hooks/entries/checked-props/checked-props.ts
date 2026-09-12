@@ -1,6 +1,6 @@
-import type TelemetryTypes from '../../telemetry-types'
 import { checkedValue } from '../checked-value'
 import { isRecord } from '../is-record'
+import type { Method } from '../method'
 import { PROP_LIMIT } from '../prop-limit'
 import { refusal } from '../refusal'
 import { TOKEN } from '../token'
@@ -15,7 +15,7 @@ import { TOKEN } from '../token'
  */
 export function checkedProps(
   props: unknown,
-  method: TelemetryTypes.Method,
+  method: Method,
 ): Record<string, string | number | boolean> {
   if (!isRecord(props)) {
     throw refusal('props: an object of properties by key', method)
