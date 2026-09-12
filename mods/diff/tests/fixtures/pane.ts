@@ -2,7 +2,7 @@ import type { RenderInput } from 'claude-code'
 
 /**
  * The diff pane docked on a 160-column terminal, unfocused, 80 columns of
- * body and 30 rows in view.
+ * body and 30 rows in view, the main conversation showing.
  */
 export const PANE: RenderInput<'Pane'> = {
   component: 'Pane',
@@ -15,5 +15,6 @@ export const PANE: RenderInput<'Pane'> = {
     bodyColumns: 80,
     placement: 'dock',
     scroll: { offset: 0, bodyRows: 30 },
+    view: {},
   },
 }

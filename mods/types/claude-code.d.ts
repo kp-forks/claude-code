@@ -472,13 +472,23 @@ declare module 'claude-code' {
   };
 
   /**
-   * The `Box` props a `hover` may override, none of which moves layout: colors,
-   * the style of a border the Box already has, and `display` to reveal.
+   * The `Box` props a `hover` may override, none of which moves layout, and
+   * `scope`, which names the hover group the Box joins instead of a style.
    *
    * `display` is `"flex"` alone, on a Box drawn `display: "none"` inside a
-   * visible keyed Box; `borderStyle` restyles, it never adds a border.
+   * visible keyed Box, and never beside a `scope` (a group lit from another
+   * site would move what the pointer is over); `borderStyle` only restyles.
    */
   export type BoxHoverProps = {
+      /**
+       * Names a hover group of this plugin's: every element it draws with the
+       * same `scope`, in any site on the surface, lights while any is hovered.
+       *
+       * A Pane row and a mark on a transcript message can share one. Another
+       * plugin's elements under the same string are a different group. One to
+       * 64 characters, no control characters; no keyed Box needed; no hook runs.
+       */
+      scope?: string;
       borderStyle?: string;
       borderColor?: string;
       borderDimColor?: boolean;
@@ -502,11 +512,11 @@ declare module 'claude-code' {
       key?: string;
       /**
        * Style overrides applied by the surface while the pointer is over the
-       * nearest `Box` with a `key`, this one included; never a layout change.
+       * nearest keyed `Box`, this one included, or, given a `scope`, its group.
        *
-       * No hook runs and nothing crosses to the plugin. To reveal on hover, keep
-       * the keyed Box visible and draw a Box inside it `display: "none"` with
-       * `hover: { display: "flex" }`. Refused outside a keyed Box.
+       * Never a layout change; no hook runs and nothing crosses to the plugin.
+       * To reveal on hover, draw a Box `display: "none"` with `hover: { display:
+       * "flex" }` inside a visible keyed Box; a scoped hover never reveals.
        */
       hover?: BoxHoverProps;
       flexDirection?: 'row' | 'column' | 'row-reverse' | 'column-reverse';
@@ -639,10 +649,11 @@ declare module 'claude-code' {
       plain?: true;
       /**
        * Label style overrides (the `Text` set) applied by the surface while the
-       * pointer is over the nearest enclosing `Box` that carries a `key`.
+       * nearest enclosing keyed `Box`, or given a `scope` its group, is hovered.
        *
        * No hook runs and nothing crosses to the plugin; under the pointer itself
-       * the button inverts as it always has. Refused outside a keyed Box.
+       * the button inverts as it always has. Refused outside a keyed Box unless
+       * it names a `scope`.
        */
       hover?: TextHoverProps;
       /**
@@ -1402,7 +1413,8 @@ declare module 'claude-code' {
        */
       value: ConfigValue;
       /**
-       * The values a `choice` row cycles through, in order; absent otherwise.
+       * The values a `choice` row takes, in order (a plugin string field's
+       * declared `options` for its row); absent otherwise.
        */
       options?: readonly string[];
       /**
@@ -1499,7 +1511,7 @@ declare module 'claude-code' {
       };
       /**
        * Display: a line under an open dialog, a redraw request, a transcript
-       * line, a pane the surface places.
+       * line, a pane the surface places, a window scrolled.
        */
       ui: {
           /**
@@ -1623,6 +1635,21 @@ declare module 'claude-code' {
            * onPress: () => $.ui.close({ id: "clock" })
            */
           close: (pane: PaneCloseArgs) => Promise<void>;
+          /**
+           * Scrolls something into view as the DOM's `scrollIntoView` would: a
+           * render instance by `requestId`, an element by `key`, a site's edge.
+           *
+           * A site of this plugin's (its pane, the band it draws into) moves under
+           * the event `ui.scroll`, origin `plugin`. A transcript row moves only
+           * while this call answers the person's own input, where one scrolls.
+           *
+           * @param args `to` (what), `in` (which site, required for `start` and
+           *             `end`), `block` (where it lands; `nearest` by default)
+           * @returns `{}` once it moved, or `{ deny }` saying why not
+           * @example
+           * onPress: () => $.ui.scroll({ in: "log", to: "end" })
+           */
+          scroll: (args: UiScrollArgs) => Promise<UiScrollResult>;
       };
       /**
        * Completions through the session's own client and credentials.
@@ -2523,6 +2550,18 @@ declare module 'claude-code' {
        */
       'ui.message': UiMessageArgument;
       /**
+       * Fires when a site's window moves: the person's wheel or scroll keys on a
+       * `Pane` body or the `AbovePrompt` band, or a plugin's `$.ui.scroll`.
+       *
+       * `next(e)` moves the window to `e.offset`: `{}`. Rewrite with `next({
+       * ...e, offset })`, or answer `{ deny: reason }` without `next` to keep
+       * it. The person's window tracks the wheel and the chain settles it after.
+       *
+       * @example
+       * on("ui.scroll", ($, e, next) => next({ ...e, offset: 0 }))
+       */
+      'ui.scroll': UiScrollInput;
+      /**
        * Fires when the engine offers an agent type to the model, in the agent
        * listing and again at dispatch; `next(e)` resolves to `{ isOffered: true }`.
        *
@@ -2752,8 +2791,8 @@ declare module 'claude-code' {
        */
       'turn.start': TurnStartInput;
       /**
-       * Fires when the engine is about to send one model request of the main
-       * thread's turn; `next(e)` sends it and resolves to the whole response.
+       * Fires when the engine is about to send a model request of a turn, main's
+       * or a subagent's (`e.agentId`); `next(e)` resolves to the whole response.
        *
        * `next({ ...e, model })` or `effort` sends another; the turn, the index and
        * the message count are pinned. An answer without `next` sends no request.
@@ -2845,6 +2884,10 @@ declare module 'claude-code' {
        * `{ props? }`: the posting instance's next props, when a hook hands some.
        */
       'ui.message': UiMessageResult;
+      /**
+       * `{}` once the window moved, or `{ deny }`.
+       */
+      'ui.scroll': UiScrollResult;
       /**
        * `{ isOffered }`.
        */
@@ -2998,6 +3041,7 @@ declare module 'claude-code' {
       ui: {
           render: <C extends RenderComponent>(input: RenderInput<C>) => Promise<RenderElement>;
           resolve: <E extends ResolveInput>(e: E) => Elements[E['surface']];
+          scroll: (input: UiScrollArgs) => Promise<UiScrollResult>;
       };
   };
 
@@ -4611,7 +4655,10 @@ declare module 'claude-code' {
    * Stored in settings.json `pluginConfigs[<plugin>].options` (sensitive ones
    * in secure storage), validated against the declared `type` before the module
    * loads; a required field with no value fails the load, naming the field. A
-   * `--plugin-dir` plugin's key is its plugin.json `<name>` (or `<name>@inline`).
+   * string field that declares `options` holds one of them: `/config` draws it
+   * as a picker over them, and a stored value outside them counts as unset, so
+   * its default applies. A `--plugin-dir` plugin's key is its plugin.json
+   * `<name>` (or `<name>@inline`).
    */
   export type PluginOptions = Readonly<Record<string, string | number | boolean | readonly string[]>>;
 
@@ -4703,6 +4750,17 @@ declare module 'claude-code' {
            */
           writes: readonly string[];
       };
+  };
+
+  /**
+   * Whose element: the plugin whose hook drew it, stamped by the runtime as the
+   * tree leaves that hook; a Box's or Text's `group`, a Client's `client`.
+   *
+   * A Button's `press` names its plugin the same way, beside its handle. Two
+   * plugins under one `hover.scope` string never share a group.
+   */
+  type PluginStamp = {
+      plugin: string;
   };
 
   type PostCompactHookInput = BaseHookInput & {
@@ -5411,56 +5469,13 @@ declare module 'claude-code' {
 
   /**
    * What a render hook returns, and what `next(e)` resolves to: a plain-data
-   * tree of elements, strings allowed as children of Text and Box.
+   * tree of elements (a Box or Text is a StyledElement), strings as children.
    *
    * Props are an allowlisted subset of Ink's Box/Text props (the ones
    * ElementProps declares); a tree with any other prop fails validation as a
    * whole and the engine's own component is drawn with the original props.
    */
-  export type RenderElement = {
-      /**
-       * `Box`: layout, and with a `key` a hover scope; every surface draws
-       * it, Ink's Box on the terminal, a flex div on the desktop.
-       */
-      type: 'Box';
-      /**
-       * Layout, margin, padding and border props, and the `key` that makes
-       * the Box a hover scope; any other prop fails the whole tree.
-       */
-      props?: Record<string, string | number | boolean>;
-      /**
-       * Style overrides the surface applies while the pointer is over the
-       * nearest Box with a `key`, this one included; plain data, no hook.
-       *
-       * A hover never moves layout: `borderStyle` only restyles a border the
-       * Box already has, and `display` only reveals (`"flex"` on a Box drawn
-       * `display: "none"` inside a visible keyed Box).
-       */
-      hover?: BoxHoverProps;
-      /**
-       * In order: elements and strings (core wraps each string in a Text).
-       */
-      children?: RenderNode[];
-  } | {
-      /**
-       * `Text`: a styled string, inline; every surface draws it, Ink's Text
-       * on the terminal, a styled span on the desktop.
-       */
-      type: 'Text';
-      /**
-       * Color and style props; any other prop fails the whole tree.
-       */
-      props?: Record<string, string | number | boolean>;
-      /**
-       * Style overrides the surface applies while the pointer is over the
-       * nearest enclosing Box with a `key`; plain data, no hook runs.
-       */
-      hover?: TextHoverProps;
-      /**
-       * In order: strings and inline elements; never an engine node.
-       */
-      children?: RenderNode[];
-  } | {
+  export type RenderElement = StyledElement<'Box', BoxHoverProps> | StyledElement<'Text', TextHoverProps> | {
       /**
        * A button, on every surface: `[ label ]` on the terminal, a native
        * button on a desktop; a press raises `ui.press` (`e.element` the key).
@@ -5511,7 +5526,7 @@ declare module 'claude-code' {
       };
       /**
        * Label style overrides (the Text set) the surface applies while the
-       * pointer is over the nearest enclosing Box with a `key`; plain data.
+       * nearest keyed Box, or the group `scope` names, is hovered; plain data.
        */
       hover?: TextHoverProps;
   } | {
@@ -5996,12 +6011,29 @@ declare module 'claude-code' {
            */
           maxRows: number;
           /**
+           * Cells across the band: the terminal's width, or the transcript
+           * column's while a `Pane` is docked beside it. Read-only.
+           *
+           * A tree wider than this wraps or truncates as its Text props say; size
+           * a table or a rule to it rather than to `viewport.columns`.
+           */
+          bodyColumns: number;
+          /**
            * The band's window over a tree taller than `maxRows`: engine-owned,
            * moved by the wheel, and by the person's keys while the band is focused.
            *
            * `bodyRows` is `maxRows` less the `n more` row. Read-only.
            */
           scroll: SiteScroll;
+          /**
+           * Which transcript is on screen above the band: the main conversation's
+           * (no `agentId`) or one agent's, opened from the tasks list.
+           *
+           * The same band under either; a switch re-runs the hook with the new
+           * view. Read-only: a rewrite carries it on as received; one that changes
+           * or drops it is refused, the hook that passed it failing.
+           */
+          view: SiteView;
       };
       /**
        * The framed region a plugin opened with `$.ui.open({ id })`: one instance
@@ -6040,6 +6072,15 @@ declare module 'claude-code' {
            * keys while the pane is focused. Read-only.
            */
           scroll: SiteScroll;
+          /**
+           * Which transcript is on screen beside the pane: the main conversation's
+           * (no `agentId`) or one agent's, opened from the tasks list.
+           *
+           * The pane stays open across a switch, one instance re-rendered for the
+           * view, so a hook draws for the agent in view. Read-only: a rewrite carries
+           * it on as received; one that changes or drops it is refused.
+           */
+          view: SiteView;
       };
   };
 
@@ -6065,8 +6106,8 @@ declare module 'claude-code' {
 
   /**
    * The size of what a surface draws into, in character cells of the
-   * surface's monospace metric: on the terminal, the screen's columns and
-   * rows; on a remote surface, the pane's width and height divided by the
+   * surface's monospace metric: on the terminal, the conversation's columns and
+   * screen rows; on a remote surface, the pane's width and height divided by the
    * advance and line height of its code font. A pixel-sized companion
    * arrives with the first element that lays out in pixels; until then
    * every element on every surface is cell-based, and so is this.
@@ -6731,6 +6772,23 @@ declare module 'claude-code' {
   };
 
   /**
+   * Which transcript the person has on screen where a site draws: the main
+   * conversation's, or one agent's, opened from the tasks list.
+   *
+   * The person's to switch, the plugin's to read: a switch re-runs the site's
+   * hooks with the new view, the site itself staying where it is.
+   */
+  export type SiteView = {
+      /**
+       * The agent whose transcript is in view: the `id` `$.agent.list()` gives
+       * it, the `agentId` its `turn.step` and `tool.call` events carry.
+       *
+       * Absent while the main conversation is in view. Read-only.
+       */
+      agentId?: string;
+  };
+
+  /**
    * The input of `skill.prompt`: one skill's prompt, at the moment the engine
    * expanded it for the model.
    *
@@ -6908,6 +6966,41 @@ declare module 'claude-code' {
       readonly trace: readonly TraceEntry<N, E, O>[];
   };
 
+  /**
+   * The shape a `Box` and a `Text` share in a render tree: allowlisted props,
+   * an optional `hover`, the group stamp a `hover.scope` earns, and children.
+   *
+   * `Tag` is which of the two; `Hover` is that element's hover props. Every
+   * surface draws both: Ink's Box and Text on the terminal, a flex div and a
+   * styled span on the desktop.
+   */
+  type StyledElement<Tag extends 'Box' | 'Text', Hover> = {
+      type: Tag;
+      /**
+       * A Box's layout, margin, padding and border props and the `key` that
+       * makes it a hover scope; a Text's colors and styles. Others are refused.
+       */
+      props?: Record<string, string | number | boolean>;
+      /**
+       * Style overrides the surface applies while the pointer is over the
+       * nearest keyed Box, or over any member of the group `scope` names.
+       *
+       * Plain data, no hook. Never a layout change: `borderStyle` restyles a
+       * border the Box has, `display` only reveals a Box drawn `"none"` inside
+       * a keyed Box, and never in a scope.
+       */
+      hover?: Hover;
+      /**
+       * Whose group `hover.scope` names; absent without a `scope`.
+       */
+      group?: PluginStamp;
+      /**
+       * In order: a Box holds elements and strings (core wraps each string in
+       * a Text); a Text holds strings and inline elements, never an engine node.
+       */
+      children?: RenderNode[];
+  };
+
   type SubagentStartHookInput = BaseHookInput & {
       hook_event_name: 'SubagentStart';
       agent_id: string;
@@ -7020,10 +7113,19 @@ declare module 'claude-code' {
   };
 
   /**
-   * The `Text` props a `hover` may override: its colors and styles, not its
-   * wrapping. A `Button` takes the same set for its label.
+   * The `Text` props a `hover` may override (its colors and styles, not its
+   * wrapping) and `scope`, the hover group it joins; a `Button`'s label too.
    */
   export type TextHoverProps = {
+      /**
+       * Names a hover group of this plugin's: every element it draws with the
+       * same `scope`, in any site on the surface, lights while any is hovered.
+       *
+       * Another plugin's elements under the same string are a different group.
+       * One to 64 characters, no control characters; no keyed Box needed. On the
+       * terminal a Text nested in a Text follows its group but cannot heat it.
+       */
+      scope?: string;
       color?: string;
       backgroundColor?: string;
       dimColor?: boolean;
@@ -7041,10 +7143,10 @@ declare module 'claude-code' {
   export type TextProps = {
       /**
        * Style overrides applied by the surface while the pointer is over the
-       * nearest enclosing `Box` that carries a `key` (the hover scope).
+       * nearest enclosing keyed `Box`, or, given a `scope`, over its group.
        *
        * No hook runs and nothing crosses to the plugin. Refused outside a keyed
-       * Box.
+       * Box unless it names a `scope`.
        */
       hover?: TextHoverProps;
       color?: string;
@@ -7604,8 +7706,8 @@ declare module 'claude-code' {
        */
       isAborted: boolean;
       /**
-       * The turn's id, the same one its `turn.start` and every `turn.step` carried;
-       * a subagent's run raises neither, so its id is its own.
+       * The turn's id, the same one its `turn.start` and every `turn.step`
+       * carried; a subagent's run raises no `turn.start`, its steps carry it.
        */
       turnId: string;
       /**
@@ -7740,7 +7842,8 @@ declare module 'claude-code' {
    */
   export type TurnStepInput = {
       /**
-       * The turn this step belongs to (`turn.start`'s id). Pinned.
+       * The turn this step belongs to (`turn.start`'s id; inside a subagent's
+       * loop, the id the run's `turn.complete` will carry). Pinned.
        */
       turnId: string;
       /**
@@ -7762,6 +7865,15 @@ declare module 'claude-code' {
        * turn's tool results included). Pinned: the messages are the engine's.
        */
       messageCount: number;
+      /**
+       * The loop the request is made in: a subagent's id, the `id`
+       * `$.agent.list()` gives it and its `tool.call`s carry; absent on main.
+       *
+       * Pinned: a different value is refused, one left out is kept. A subagent
+       * a hook spawned through `$.agent.spawn` steps past that hook, as its tool
+       * calls do; every other hook sees its steps.
+       */
+      agentId?: string;
   };
 
   /**
@@ -8073,6 +8185,145 @@ declare module 'claude-code' {
        */
       element: string;
   };
+
+  /**
+   * What a plugin's `$.ui.scroll(args)` takes: what to bring into view, in
+   * which of its sites, and where in the window it lands.
+   *
+   * The engine resolves it to a window and an offset and raises `ui.scroll`
+   * under the plugin's origin; a transcript row is the person's to move, so
+   * it is revealed only while the plugin answers the person's own input.
+   */
+  export type UiScrollArgs = {
+      /**
+       * What to reveal (UiScrollTarget): a render instance by `requestId`, one
+       * of this plugin's elements by `key`, or the `start` or `end` of `in`.
+       */
+      to: UiScrollTarget;
+      /**
+       * The site to scroll, by the `requestId` this plugin draws it under: one
+       * of its panes' ids, or the band's.
+       *
+       * Required with `start` and `end`; with `{ key }` it picks the site when
+       * the key is drawn in several.
+       */
+      in?: string;
+      /**
+       * Where the target lands in the window (UiScrollBlock); `nearest` when
+       * left out, so a row already showing does not move.
+       */
+      block?: UiScrollBlock;
+  };
+
+  /**
+   * Where in its scrollable a revealed row lands, as the DOM's
+   * `scrollIntoView({ block })` names it.
+   *
+   * `nearest` moves the least that shows the row whole, and not at all when
+   * it already shows; `start`, `center` and `end` put its top, middle or
+   * bottom at that edge of the window. A row taller than the window shows
+   * its top.
+   */
+  export type UiScrollBlock = 'start' | 'center' | 'end' | 'nearest';
+
+  /**
+   * The render components whose site the engine scrolls: a pane's body and
+   * the band above the prompt, each a window over the tree a hook drew there.
+   */
+  export type UiScrollComponent = 'Pane' | 'AbovePrompt';
+
+  /**
+   * The input of `ui.scroll`: a site's window about to move over the tree a
+   * hook drew in it (a pane's body, the band above the prompt).
+   *
+   * `component`, `requestId`, `bodyRows` and `origin` are the engine's word,
+   * pinned: `next(e)` passes them on, a rewrite that leaves one out keeps it,
+   * one that changes it fails the hook. `offset` is the hook's to rewrite.
+   */
+  export type UiScrollInput = {
+      /**
+       * Which site: a `Pane` body or the `AbovePrompt` band.
+       */
+      component: UiScrollComponent;
+      /**
+       * The instance the `ui.render` hook drawing the site sees: the pane's id,
+       * or the band's one id.
+       */
+      requestId: string;
+      /**
+       * The first row of the tree the window is to show, 0 at the top: where
+       * the person put it, or where a plugin's `$.ui.scroll` resolved to.
+       *
+       * `next({ ...e, offset })` moves it elsewhere (a clamp); one past the
+       * tree's end lands at the end.
+       */
+      offset: number;
+      /**
+       * How many rows of the tree the window shows at once, as drawn now.
+       * Read-only.
+       */
+      bodyRows: number;
+      /**
+       * Who moves it (UiScrollOrigin), set by the engine where the move starts.
+       */
+      origin: UiScrollOrigin;
+  };
+
+  /**
+   * Who moves the window at `ui.scroll`, as the engine stamps it where the
+   * move starts; a closed set a matcher narrows on.
+   *
+   * `next(e)` passes it on as received; no hook sets one.
+   */
+  export type UiScrollOrigin = {
+      /**
+       * The person, by the wheel over the site or its scroll keys while
+       * they hold it.
+       */
+      kind: 'person';
+  } | {
+      /**
+       * A plugin's `$.ui.scroll`.
+       */
+      kind: 'plugin';
+      /**
+       * The scrolling plugin's name.
+       */
+      name: string;
+  };
+
+  /**
+   * What a `ui.scroll` hook returns, what `next(e)` resolves to, and what
+   * `$.ui.scroll` hands back: `{}` once the window moved, or why it did not.
+   */
+  export type UiScrollResult = {
+      /**
+       * Absent when the window is where the chain left it; else why nothing
+       * moved, as `tool.call` and `config.set` spell a refusal.
+       *
+       * A hook kept the window (answering without `next`), the target is not
+       * this plugin's to scroll, or a transcript row was asked for outside the
+       * person's own input (`not person-initiated`) or where none scrolls.
+       */
+      deny?: string;
+  };
+
+  /**
+   * What `$.ui.scroll` brings into view: never a row number, always a thing
+   * drawn somewhere.
+   *
+   * `{ requestId }` names a render instance by the id its `ui.render` hook
+   * saw (a transcript message's, a tool row's tool_use_id), scrolled into view
+   * inside whatever scrolls it. `{ key }` names an element this plugin drew
+   * with that `key`, inside the site it drew it in. `start` and `end` are the
+   * top and bottom of the site `in` names; `end` keeps up with a tree that
+   * grows (rows the plugin just added count) until anything next moves it.
+   */
+  export type UiScrollTarget = {
+      requestId: string;
+  } | {
+      key: string;
+  } | 'start' | 'end';
 
   /**
    * The argument of `ui.select`: a pick from a `Select` a render hook drew.
