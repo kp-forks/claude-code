@@ -1,3 +1,4 @@
+export * from './close-button'
 export * from './controls-view.jsx'
 export * from './diff-stat'
 export * from './dim-note'

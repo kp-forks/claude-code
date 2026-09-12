@@ -29,11 +29,13 @@ export function fileRow(
   const { Box, Text, Button } = kit.ui
   const room = Math.max(kit.columns - STAT_CELLS, STAT_CELLS)
   const mark = row.isSelected ? POINTER : ' '
+
   const note = (
     <Text dimColor italic>
       {row.note ?? ''}
     </Text>
   )
+
   const hasNote = row.note !== null
   const tail = hasNote ? note : diffStat(kit, row.added, row.removed)
 

@@ -24,7 +24,9 @@ export function emptyStateOf(
   if (!data) {
     return {
       headline: 'Diff unavailable',
-      hint: `Couldn't read the ${words.diffCommand} — it will retry on the next change`,
+      hint:
+        `Couldn't read the ${words.diffCommand} — it will retry on the ` +
+        'next change',
     }
   }
 
@@ -35,7 +37,7 @@ export function emptyStateOf(
   if (data.isUntrackedWithheld) {
     return {
       headline: 'No tracked changes',
-      hint: Names.untrackedWithheldTextOf(words.lister),
+      hint: Names.untrackedWithheldTextOf(words),
     }
   }
 

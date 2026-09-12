@@ -21,6 +21,7 @@ export function todoProgressOf(
   const latest = messages
     .flatMap(message => message.toolUses)
     .findLast(use => use.tool === Tools.TODO_TOOL)
+
   const statuses = arrayOf(latest?.input.todos).map(todo =>
     isRecord(todo) ? todo.status : null,
   )

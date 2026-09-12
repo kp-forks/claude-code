@@ -22,15 +22,13 @@ export async function withUntracked(
   result: Types.NumstatResult,
   scope: Types.UntrackedScope,
 ): Promise<Types.MergedResult> {
-  if (isPastDetails(result)) {
-    return mergedResultOf(result, { isUntrackedWithheld: false })
-  }
-
-  return mergedWithUntracked(
-    result,
-    await Probes.untrackedFiles(context, {
-      slots: Limits.MAX_FILES - result.files.length,
-      scope,
-    }),
-  )
+  return isPastDetails(result)
+    ? mergedResultOf(result, { isUntrackedWithheld: false })
+    : mergedWithUntracked(
+        result,
+        await Probes.untrackedFiles(context, {
+          slots: Limits.MAX_FILES - result.files.length,
+          scope,
+        }),
+      )
 }

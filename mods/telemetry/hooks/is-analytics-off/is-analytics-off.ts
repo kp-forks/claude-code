@@ -18,6 +18,7 @@ export function isAnalyticsOff(environment: Environment) {
     isEnvSet(environment.disableTelemetry) ||
     isEnvSet(environment.disableNonessentialTraffic) ||
     isEnvTruthy(environment.doNotTrack)
+
   const isThirdParty = [
     environment.useBedrock,
     environment.useVertex,
@@ -26,6 +27,7 @@ export function isAnalyticsOff(environment: Environment) {
     environment.useAnthropicGoogleCloud,
     environment.useMantle,
   ].some(isEnvTruthy)
+
   const isCustomDeployment = isEnvSet(environment.customOauthUrl?.trim())
 
   return isPrivate || isThirdParty || isCustomDeployment

@@ -21,6 +21,5 @@ export * from './todos'
 export * from './tools'
 export * from './turns'
 export * from './views'
-export * from './word-diff'
 
 export * as default from '.'

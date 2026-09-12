@@ -12,16 +12,17 @@ import Layout from '../layout'
 import Sections from '../sections'
 import { fileRowOf } from './file-row-of'
 import { listBodyOf } from './list-body-of'
+import { messagePaneOf } from './message-pane-of'
 
 /**
  * The pane over the repository's diff now (ReplDiffSidebarBody, one file's
  * body at a time): header, base line, todo bar, pickers, rows, detail.
  *
- * The tests-and-generated toggle sits above the rows; the elision count, the
- * withheld-untracked note, the pre-session line and rows below them; the
- * selected file last.
+ * The toggle sits above the rows; the elision count, withheld-untracked
+ * note and pre-session line below, with blank rows as the built-in leaves.
+ * With nothing to list, messagePaneOf draws the body, the header a close.
  *
- * @param kit the elements, the handlers, the width
+ * @param kit the elements, the handlers, the width, the rows
  * @param model the pane's state
  * @returns the pane's tree
  */
@@ -37,53 +38,83 @@ export function currentPane(
   }
 
   if (!data && !model.hasSettled) {
-    return <Box>{Sections.dimNote(kit, 'Loading diff…')}</Box>
+    return messagePaneOf(kit, {
+      top: [Sections.headerView(kit, null)],
+      message: ['Loading diff…'],
+      controls: null,
+      earlier: null,
+      rest: [],
+    })
   }
 
   const noise = model.isNoiseShown ? 'shown' : 'hidden'
   const preSession = model.isPreSessionShown ? 'shown' : 'hidden'
   const partition = PaneState.partitionOf(data?.files ?? [], noise)
+
   const totals = data
     ? PaneState.headerTotalsOf(data, partition)
     : PaneState.ZERO_TOTALS
+
   const empty = PaneState.emptyStateOf(data, totals.filesCount, model.words)
-  const baseLabel = PaneState.baseLabelOf(
-    model.requestedMode,
-    data,
-    totals.filesCount,
-    model.words,
-  )
+  const baseLabel = PaneState.baseLabelOf(model, totals.filesCount)
+
   const selected = PaneState.selectionOf(
     PaneState.listedOf(partition, preSession),
     model.selectedPath,
   )
+
   const rowOf = (file: Git.FileStat): RenderElement =>
     Sections.fileRow(kit, fileRowOf(file, selected?.path ?? null), () =>
       kit.actions.selectFile(file.path),
     )
+
   const noteOf = (text: string | null): RenderElement | null =>
     text === null ? null : Sections.dimNote(kit, Layout.sanitizeName(text))
+
   const noiseFace = model.isNoiseShown ? 'hide' : 'show'
   const noiseCount = Layout.plural(partition.noiseCount, 'test')
   const hasNoise = partition.noiseCount > 0
+
   const noiseToggle = hasNoise
     ? Sections.toggleRow(kit, 'noise', {
         label: `${noiseCount}/generated (${noiseFace})`,
         onPress: kit.actions.toggleNoise,
       })
     : null
+
   const earlierFace = model.isPreSessionShown ? 'hide' : 'show'
   const earlierCount = Layout.plural(partition.preSession.length, 'file')
   const hasEarlier = partition.preSession.length > 0
+
   const earlierToggle = hasEarlier
     ? Sections.toggleRow(kit, 'presession', {
         label: `+${earlierCount} edited before this session (${earlierFace})`,
         onPress: kit.actions.togglePreSession,
       })
     : null
-  const earlierRows = model.isPreSessionShown ? partition.preSession : []
+
+  const earlierFiles = model.isPreSessionShown ? partition.preSession : []
+  const isEarlierListed = earlierFiles.length > 0
+
+  const earlierRows = isEarlierListed
+    ? [<Box height={1} />, ...earlierFiles.map(rowOf)]
+    : []
+
   const isUntrackedNoted = data?.isUntrackedWithheld === true && !empty
   const listed = listBodyOf(kit, { data, partition, totals, empty })
+  const notes = listed.filter(line => typeof line === 'string')
+  const hasRows = notes.length < listed.length
+  const message = empty ? [empty.headline, ...notes] : hasRows ? [] : notes
+  const header = Sections.headerView(kit, empty ? null : totals)
+
+  const notShownNote = noteOf(
+    totals.notShown > 0 ? `${totals.notShown} not shown` : null,
+  )
+
+  const untrackedNote = noteOf(
+    isUntrackedNoted ? Names.untrackedWithheldTextOf(model.words) : null,
+  )
+
   const detail = selected
     ? [
         Sections.divider(kit),
@@ -104,25 +135,39 @@ export function currentPane(
       ]
     : []
 
-  return (
+  const isMessageShown = message.length > 0
+
+  return isMessageShown ? (
+    messagePaneOf(kit, {
+      top: Sections.present([
+        header,
+        noteOf(baseLabel),
+        Sections.todoBar(kit, model),
+        noiseToggle,
+        notShownNote,
+        untrackedNote,
+      ]),
+      message,
+      controls: Sections.controlsView(kit, model),
+      earlier: earlierToggle,
+      rest: [...earlierRows, ...detail],
+    })
+  ) : (
     <Box flexDirection="column">
       {Sections.present([
-        Sections.headerView(kit, empty?.headline ?? null, totals),
+        header,
         noteOf(baseLabel),
-        Sections.todoBar(kit, model.todos),
+        Sections.todoBar(kit, model),
         Sections.controlsView(kit, model),
         noiseToggle,
         ...listed.map(line =>
           typeof line === 'string' ? noteOf(line) : rowOf(line),
         ),
-        noteOf(totals.notShown > 0 ? `${totals.notShown} not shown` : null),
-        noteOf(
-          isUntrackedNoted
-            ? Names.untrackedWithheldTextOf(model.words.lister)
-            : null,
-        ),
+        notShownNote,
+        untrackedNote,
+        hasEarlier ? <Box height={1} /> : null,
         earlierToggle,
-        ...earlierRows.map(rowOf),
+        ...earlierRows,
         ...detail,
       ])}
     </Box>

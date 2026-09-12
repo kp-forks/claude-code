@@ -6,38 +6,40 @@ import type { RenderElement } from 'claude-code'
 import type PaneState from '../../pane-state'
 import type { Kit } from '../kit'
 import Layout from '../layout'
+import { closeButton } from './close-button'
 import { diffStat } from './diff-stat'
 
 /**
- * The pane's first line: `N files changed +A -R`, or the empty headline in
- * its place when there is nothing to count (ReplDiffSidebar's header).
+ * The pane's first line (ReplDiffSidebar's header row): `N files changed
+ * +A -R`, or nothing over an empty state.
  *
- * The headline may name a branch the repository chose, so it is drawn as
- * a name: no control or format character survives.
+ * The close `✕` sits at the right edge either way.
  *
  * @param kit the drawing's kit; its elements draw the line
- * @param headline the empty headline, or null to draw the counts
- * @param totals the header's counts
+ * @param totals the header's counts, or null when there is nothing to count
  * @returns the line
  */
 export function headerView(
   kit: Kit,
-  headline: string | null,
-  totals: PaneState.HeaderTotals,
+  totals: PaneState.HeaderTotals | null,
 ): RenderElement {
-  const { Text } = kit.ui
-  const empty = (
-    <Text dimColor wrap="truncate-end">
-      {Layout.sanitizeName(headline ?? '')}
-    </Text>
-  )
-  const counts = (
-    <Text wrap="truncate-end">
-      <Text bold>{Layout.plural(totals.filesCount, 'file')}</Text>
-      {' changed '}
-      {diffStat(kit, totals.linesAdded, totals.linesRemoved)}
-    </Text>
-  )
+  const { Box, Text } = kit.ui
 
-  return headline === null ? counts : empty
+  return (
+    <Box flexDirection="row">
+      {[
+        ...(totals
+          ? [
+              <Text wrap="truncate-end">
+                <Text bold>{Layout.plural(totals.filesCount, 'file')}</Text>
+                {' changed '}
+                {diffStat(kit, totals.linesAdded, totals.linesRemoved)}
+              </Text>,
+            ]
+          : []),
+        <Box flexGrow={1} />,
+        closeButton(kit),
+      ]}
+    </Box>
+  )
 }

@@ -34,6 +34,7 @@ export function placeholderOf(detail: DetailModel): readonly string[] | null {
 
   const { isLarge, hunks } = detail.body
   const isEmpty = hunks.length === 0
+
   const note = isLarge
     ? 'Large file - diff exceeds 1 MB limit'
     : isEmpty

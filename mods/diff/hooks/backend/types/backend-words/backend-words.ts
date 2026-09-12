@@ -1,7 +1,9 @@
 /**
- * The words the pane draws that name the backend: what uncommitted mode
- * compares against, the command whose failure the empty state names, the
- * tool that lists untracked files, and the note under an untracked row.
+ * The words the pane draws that name the backend.
+ *
+ * What uncommitted mode compares against, the command whose failure the
+ * empty state names, the tool that lists untracked files, and the note
+ * under an untracked row.
  */
 export type BackendWords = {
   /**

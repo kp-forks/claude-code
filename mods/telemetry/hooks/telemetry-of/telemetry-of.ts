@@ -1,7 +1,7 @@
+import type { Telemetry } from '../../types'
 import Entries from '../entries'
 import { isAnalyticsOff } from '../is-analytics-off'
 import type { TelemetryDeps } from '../telemetry-deps'
-import type TelemetryTypes from '../telemetry-types'
 
 /**
  * Builds `$.telemetry`: `log` and `mark` check the entry, read the environment
@@ -14,12 +14,12 @@ import type TelemetryTypes from '../telemetry-types'
  * @param deps the calls on the nouns beneath
  * @returns the `$.telemetry` interface, `log` and `mark`
  */
-export function telemetryOf(deps: TelemetryDeps): TelemetryTypes.Telemetry {
+export function telemetryOf(deps: TelemetryDeps): Telemetry {
   let queue: Promise<unknown> = Promise.resolve()
 
   async function post(
     fields: Entries.Fields,
-    method: TelemetryTypes.Method,
+    method: Entries.Method,
   ): Promise<void> {
     const environment = await deps.environment()
 
@@ -32,6 +32,7 @@ export function telemetryOf(deps: TelemetryDeps): TelemetryTypes.Telemetry {
       model: await deps.model(),
       userType: environment.userType === 'ant' ? 'ant' : 'external',
     })
+
     const auth = await deps.authorize()
 
     if (!auth) {
@@ -58,7 +59,7 @@ export function telemetryOf(deps: TelemetryDeps): TelemetryTypes.Telemetry {
 
   function queued(
     fields: Entries.Fields,
-    method: TelemetryTypes.Method,
+    method: Entries.Method,
   ): Promise<void> {
     const turn = queue.then(() => post(fields, method))
     queue = turn.catch(() => undefined)

@@ -2,8 +2,8 @@ import type Backend from '../backend'
 import Limits from '../limits'
 import Argv from './argv'
 import { FAILED_RUN } from './failed-run'
-import { fetchDiff } from './fetch-diff.js'
-import { fetchFileHunks } from './fetch-file-hunks.js'
+import { fetchDiff } from './fetch-diff'
+import { fetchFileHunks } from './fetch-file-hunks'
 import { GIT_BASE_MODES } from './git-base-modes'
 import { GIT_WORDS } from './git-words'
 import Probes from './probes'
@@ -11,9 +11,10 @@ import type Types from './types'
 
 /**
  * The git backend over the session's directory: the repository read with
- * one `rev-parse` in that directory, then every child pinned to it
- * (`--git-dir`, `--work-tree`, cwd the top) under the C locale and the
- * fetch's timeout (gitDiff.ts execPinnedGit).
+ * one `rev-parse` in that directory, then every child pinned to it.
+ *
+ * Each child runs with `--git-dir`, `--work-tree` and cwd the top, under
+ * the C locale and the fetch's timeout (the built-in's execPinnedGit).
  *
  * @param host the bound host's runner and probes
  * @returns the backend, or null outside a git working tree
@@ -45,6 +46,7 @@ export async function gitBackendOf(
   }
 
   const run = runOf(repository)
+
   const depsOf = (): Types.GitDeps => ({
     run,
     repository,

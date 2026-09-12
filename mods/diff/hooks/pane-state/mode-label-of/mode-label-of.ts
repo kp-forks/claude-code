@@ -1,27 +1,26 @@
-import type Backend from '../../backend'
 import type Git from '../../git'
+import type { PaneModel } from '../pane-model'
 
 /**
- * A requested mode's name for the base line; branch mode names its base
- * branch from the data, or says what stands in while none is known. A
- * working-tree diff names its own base (`HEAD`, a short sha); anything
- * else falls back to the backend's word for it.
+ * A requested mode's name for the base line.
  *
- * @param requested the mode the person picked
+ * Branch mode names its base branch from the data, or says what stands in
+ * while none is known. A working-tree diff names its own base (`HEAD`, a
+ * short sha); anything else falls back to the backend's word for it.
+ *
+ * @param model the mode the person picked, and the backend's words
  * @param source what the data on screen compares
  * @param phase `pending` while the requested mode's fetch has not landed
- * @param words the backend's words
  * @returns the label without its pending ellipsis
  */
 export function modeLabelOf(
-  requested: Git.BaseMode,
+  model: Pick<PaneModel, 'requestedMode' | 'words'>,
   source: Git.DiffSource,
   phase: 'pending' | 'settled',
-  words: Pick<Backend.BackendWords, 'base'>,
 ) {
-  const base = source.kind === 'working-tree' ? source.base : words.base
+  const base = source.kind === 'working-tree' ? source.base : model.words.base
 
-  switch (requested) {
+  switch (model.requestedMode) {
     case 'session':
       return 'this session'
     case 'uncommitted':

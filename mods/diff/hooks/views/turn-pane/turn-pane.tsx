@@ -25,10 +25,12 @@ export function turnPane(
   turn: Turns.TurnDiff,
 ): RenderElement {
   const { Box } = kit.ui
+
   const selected =
     turn.files.find(file => file.path === model.selectedPath) ??
     turn.files[0] ??
     null
+
   const rows = turn.files.map(file =>
     Sections.fileRow(
       kit,
@@ -43,6 +45,7 @@ export function turnPane(
       () => kit.actions.selectFile(file.path),
     ),
   )
+
   const detail = selected
     ? [
         Sections.divider(kit),
@@ -70,7 +73,7 @@ export function turnPane(
   return (
     <Box flexDirection="column">
       {Sections.present([
-        Sections.headerView(kit, null, PaneState.turnTotalsOf(turn)),
+        Sections.headerView(kit, PaneState.turnTotalsOf(turn)),
         Sections.dimNote(
           kit,
           `Turn ${turn.index} "${Layout.sanitizeName(turn.preview)}"`,

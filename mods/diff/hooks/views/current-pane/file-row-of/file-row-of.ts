@@ -14,6 +14,7 @@ export function fileRowOf(
   selectedPath: string | null,
 ): Sections.FileRowModel {
   const isRenamed = file.renamedFrom !== null
+
   const note = file.isUntracked
     ? 'untracked'
     : file.isBinary

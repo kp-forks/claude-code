@@ -1,5 +1,5 @@
 import Argv from '../../argv'
-import GitParse from '../../parse'
+import Parse from '../../parse'
 import type Types from '../../types'
 import type { UntrackedPlace } from '../untracked-place'
 import { untrackedRowsOf } from '../untracked-rows-of'
@@ -30,11 +30,11 @@ export async function untrackedFiles(
     '--full-name',
   ])
 
-  if (!GitParse.isWholeAnswer(listing)) {
-    return null
-  }
-
-  const paths = listing.stdout.split('\0').filter(path => path !== '')
-
-  return untrackedRowsOf(context, paths, place)
+  return Parse.isWholeAnswer(listing)
+    ? untrackedRowsOf(
+        context,
+        listing.stdout.split('\0').filter(path => path !== ''),
+        place,
+      )
+    : null
 }

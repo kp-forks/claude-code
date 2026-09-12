@@ -19,7 +19,7 @@ export type Host = {
   /**
    * `$.clock.now`.
    */
-  now: () => number
+  now: () => Promise<number>
 
   /**
    * `$.clock.after`.
@@ -103,6 +103,11 @@ export type Host = {
    * `$.command.register`; rejects while another `/diff` is listed.
    */
   registerCommand: (spec: CommandSpec) => Promise<unknown>
+
+  /**
+   * Which session the pane-shown row is latched to, as `$.session.id` says.
+   */
+  sessionId: () => Promise<string>
 
   /**
    * `$.telemetry.mark`; rejects where the telemetry built-in is absent.
