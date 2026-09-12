@@ -36,14 +36,14 @@ imports, the tier the mod loads in, and one `describe` titled with that name;
 what several tests share sits under `tests/fixtures/`, one export a file.
 
 ```ts
-import { describe, expect, memoryClock, test, tier } from 'claude-code/testing'
+import { describe, expect, mock, test, tier } from 'claude-code/testing'
 
 tier('builtin')
 
 describe('register', () => {
   test('outside a git repository /diff says so, opens nothing', async ($, on) => {
     const opened: string[] = []
-    memoryClock(on)
+    mock.clock(on)
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     on('command.register', ($, e) => ({ value: { command: e.name } }))
     on('process.run', () => ({
@@ -67,13 +67,13 @@ describe('register', () => {
 })
 ```
 
-The kit's helpers are plain functions over `on`, each answering one noun
-beneath the mod where the test calls it: `memoryEnv(on, variables)` for
-`$.env`, `memoryStore(on, entries)` for `$.store`, and `memoryClock(on)` for
-`$.clock`, whose `advance(ms)` resolves every wait the mod asked for
-(`$.clock.sleep`, `after`, `every`) as the clock crosses it. `textOf(tree)`
-reads a rendered tree's text, and `$.ui.press({ plugin, key })` presses a
-`Button` the test rendered, as a click in the terminal does.
+The kit's `mock` answers the world beneath the mod from memory, noun by noun,
+each member a plain function over `on` registering hooks where the test calls
+it: `mock.env(on, variables)` for `$.env`, `mock.store(on, entries)` for
+`$.store`, and `mock.clock(on)` for `$.clock`, whose `advance(ms)` resolves
+every wait the mod asked for (`$.clock.sleep`, `after`, `every`) as the clock
+crosses it. `$.ui.press({ plugin, key })` presses a `Button` the test
+rendered, as a click in the terminal does.
 
 `tsc -p mods/tsconfig.json` typechecks every mod's hooks and tests against
 `types/`.

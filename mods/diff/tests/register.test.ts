@@ -1,11 +1,4 @@
-import {
-  describe,
-  expect,
-  memoryClock,
-  test,
-  textOf,
-  tier,
-} from 'claude-code/testing'
+import { describe, expect, mock, test, tier } from 'claude-code/testing'
 
 import Limits from '../hooks/limits'
 import Fixtures from './fixtures'
@@ -73,7 +66,7 @@ describe('register', () => {
 
   test('when the built-in holds /diff, the mod stands down', async ($, on) => {
     const logged: string[] = []
-    memoryClock(on)
+    mock.clock(on)
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     on('command.register', () => ({ deny: Fixtures.BUILTIN_HOLDS }))
     on('command.run', () => ({ text: 'the built-in /diff ran' }))
@@ -93,7 +86,7 @@ describe('register', () => {
 
   test('a refusal the built-in did not cause is said aloud', async ($, on) => {
     const logged: string[] = []
-    memoryClock(on)
+    mock.clock(on)
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     on('command.register', () => ({
       deny: '32 commands are registered already',
@@ -121,7 +114,7 @@ describe('register', () => {
     expect(world.opened.map(pane => pane.id)).toEqual(['diff'])
 
     await world.clock.advance(Fixtures.SETTLE_MS)
-    const drawn = textOf(await $.ui.render(Fixtures.PANE))
+    const drawn = Fixtures.textOf(await $.ui.render(Fixtures.PANE))
 
     expect(drawn).toContain('1 file changed')
     expect(drawn).toContain('app.ts')

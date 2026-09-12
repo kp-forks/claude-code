@@ -1,6 +1,6 @@
 import type { On } from 'claude-code'
-import { memoryClock } from 'claude-code/testing'
-import type { MemoryClock } from 'claude-code/testing'
+import { mock } from 'claude-code/testing'
+import type { MockClock } from 'claude-code/testing'
 
 /**
  * Answers what every /diff session asks first: its start, with its own
@@ -9,9 +9,9 @@ import type { MemoryClock } from 'claude-code/testing'
  * @param on the test's `on`
  * @returns the clock the session reads, at 0 until the test moves it
  */
-export function startsSession(on: On): MemoryClock {
+export function startsSession(on: On): MockClock {
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))
 
-  return memoryClock(on)
+  return mock.clock(on)
 }

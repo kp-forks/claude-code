@@ -1,5 +1,5 @@
 import type { Args, On } from 'claude-code'
-import { memoryStore } from 'claude-code/testing'
+import { mock } from 'claude-code/testing'
 
 import { gitIn } from './git-in.js'
 import { HINT_DRAWN } from './hint-drawn.js'
@@ -30,7 +30,7 @@ export function inRepository(on: On) {
   on('ui.invalidate', () => ({ value: undefined }))
   on('ui.render', { component: 'PromptHint' }, () => HINT_DRAWN)
   on('session.messages', () => ({ value: [] }))
-  memoryStore(on)
+  mock.store(on)
 
   return { runs, opened: opened.kept, closed: closed.kept, clock }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, memoryEnv, test, tier } from 'claude-code/testing'
+import { describe, expect, mock, test, tier } from 'claude-code/testing'
 
 import Fixtures from './fixtures'
 
@@ -9,7 +9,7 @@ describe('register', () => {
     'a $.telemetry.log call from a plugin posts one first-party row',
     { plugins: [Fixtures.recording] },
     async ($, on) => {
-      memoryEnv(on, { USER_TYPE: 'ant' })
+      mock.env(on, { USER_TYPE: 'ant' })
       const posts = Fixtures.firstPartySession(on)
 
       expect(
@@ -39,7 +39,7 @@ describe('register', () => {
     'a row already named tengu_ is sent under its own name',
     { plugins: [Fixtures.recording] },
     async ($, on) => {
-      memoryEnv(on, {})
+      mock.env(on, {})
       const posts = Fixtures.firstPartySession(on)
 
       await $.command.run(
@@ -68,7 +68,7 @@ describe('register', () => {
     'nothing is sent for a person who asked not to be tracked',
     { plugins: [Fixtures.recording] },
     async ($, on) => {
-      memoryEnv(on, { DO_NOT_TRACK: '1' })
+      mock.env(on, { DO_NOT_TRACK: '1' })
       const posts = Fixtures.firstPartySession(on)
       const { text } = await $.command.run(
         Fixtures.record(Fixtures.surveyAnswer()),
@@ -82,7 +82,7 @@ describe('register', () => {
     'nothing is sent on a third-party provider',
     { plugins: [Fixtures.recording] },
     async ($, on) => {
-      memoryEnv(on, { CLAUDE_CODE_USE_BEDROCK: '1' })
+      mock.env(on, { CLAUDE_CODE_USE_BEDROCK: '1' })
       const posts = Fixtures.firstPartySession(on)
 
       await $.command.run(Fixtures.record(Fixtures.surveyAnswer()))
@@ -95,7 +95,7 @@ describe('register', () => {
     'a session with no first-party credential is refused, nothing sent',
     { plugins: [Fixtures.recording] },
     async ($, on) => {
-      memoryEnv(on, {})
+      mock.env(on, {})
       const posts = Fixtures.firstPartySession(on, null)
       const { text } = await $.command.run(
         Fixtures.record(Fixtures.surveyAnswer()),
@@ -113,7 +113,7 @@ describe('register', () => {
     'free text in a row is refused, nothing sent',
     { plugins: [Fixtures.recording] },
     async ($, on) => {
-      memoryEnv(on, {})
+      mock.env(on, {})
       const posts = Fixtures.firstPartySession(on)
       const { text } = await $.command.run({
         ...Fixtures.record(Fixtures.surveyAnswer()),

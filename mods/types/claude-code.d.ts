@@ -16,11 +16,14 @@
 // `Button`, ...) are not globals: they come from the surface's table,
 //   const { Box, Text } = $.ui.resolve(e)
 //
-// Also here: 'claude-code/testing', the kit a plugin's *.test.ts files
-// import under `claude plugin test <dir>`: `test(name, async ($, on) =>
-// { ... })`, where `$` is the engine's own and the hooks `on` registers
-// sit beneath every plugin; with tier, describe, expect, textOf and the
-// memory helpers (memoryEnv, memoryStore, memoryClock).
+// Also here: 'claude-code/testing', the kit a plugin's *.test.ts and
+// *.test.tsx files import under `claude plugin test <dir>`, which runs each
+// in an environment like the one a plugin's hooks run in (no fs, network or
+// process), the plugin loaded from the folder by the engine's own host:
+// `test(name, async ($, on) => { ... })`, where `$` is the engine's own
+// and the hooks `on` registers sit beneath every plugin; with describe,
+// expect, tier, and `mock`, whose clock, store and env answer those nouns
+// beneath the plugins from memory.
 //
 // Typing a plugin against it:
 //   export const register: Register = (on, options) => { ... }
@@ -8300,264 +8303,506 @@ declare module 'claude-code' {
 }
 
 declare module 'claude-code/testing' {
-  /**
-   * The kit a plugin's test file imports: `claude plugin test <dir>` runs
-   * every `*.test.ts` and `*.test.tsx` under the folder, each in an
-   * environment like the one a plugin's hooks run in (no fs, network or
-   * process), with the plugin loaded from the folder by the engine's own host.
-   */
-  /**
-   * One call on the engine's `$`: the event's input whole, as an engine call
-   * site passes it (a command's `origin`, a prompt's), to its result, or for
-   * a streaming event to its stream.
-   */
-  type EngineCall<E extends import('claude-code').EventName> =
-    E extends import('claude-code').StreamingEventName
-      ? (
-          e: import('claude-code').Args<E>,
-        ) => import('claude-code').HookStream<
-          import('claude-code').Chunk<E>,
-          import('claude-code').ResultOf[E]
-        >
-      : (
-          e: import('claude-code').Args<E>,
-        ) => Promise<import('claude-code').ResultOf[E]>
+  import type { Args } from 'claude-code';
+  import type { Chunk } from 'claude-code';
+  import type { EventCalls } from 'claude-code';
+  import type { EventName } from 'claude-code';
+  import type { HookStream } from 'claude-code';
+  import type { On } from 'claude-code';
+  import type { Register } from 'claude-code';
+  import type { ResultOf } from 'claude-code';
+  import type { StreamingEventName } from 'claude-code';
+  import type { Tier } from 'claude-code';
+  import type { UiPressResult } from 'claude-code';
 
   /**
-   * What `$.ui.press` takes: the plugin whose `ui.render` hook drew the
-   * Button, the `key` it gave it, and, when it drew one under that key in
-   * several instances, the `requestId` of the one meant.
+   * A value that matches by a rule inside `toEqual` and its kin
+   * (`expect.any`, `expect.objectContaining`), known by its text in a failure.
    */
-  export type PressTarget = {
-    plugin: string
-    key: string
-    requestId?: string
-  }
+  export type AsymmetricMatcher = {
+      readonly text: string;
+  };
 
   /**
-   * The engine's `$`: every call a test makes on it is the engine's own,
-   * as the REPL, the query loop and the render sites make theirs. `next.origin`
-   * is the engine, and the whole chain runs over the plugins loaded. A tool
-   * call's `tool_use_id` is minted when left out, as the engine mints it.
-   *
-   * `$.ui.press(target)` is the terminal pressing a Button a test rendered:
-   * the `ui.press` chain over every plugin hooked on it, the Button's own
-   * `onPress` at the bottom, as a click or its hotkey runs it. It resolves
-   * to what the chain settled on, and rejects when no Button of that plugin
-   * and key is drawn on the terminal, or several are and no instance is named.
+   * The same checks on what a promise received settles with, each resolving
+   * once the promise has settled and the check passed.
    */
-  export type Engine = {
-    [N in keyof import('claude-code').EventCalls]: {
-      [V in keyof import('claude-code').EventCalls[N] &
-        string as `${N}.${V}` extends 'ui.resolve'
-        ? never
-        : V]: `${N}.${V}` extends 'tool.call' | 'ui.render'
-        ? import('claude-code').EventCalls[N][V]
-        : EngineCall<`${N}.${V}` & import('claude-code').EventName>
-    } & (N extends 'ui'
-      ? {
-          press(
-            target: PressTarget,
-          ): Promise<import('claude-code').ResultOf['ui.press'] | undefined>
-        }
-      : {})
-  }
-
-  /**
-   * A test: the engine's `$`, and `on`, a plugin's registrar, whose hooks
-   * sit beneath every plugin. Beneath them is the bottom hook: a call nothing
-   * answers throws, naming its event; a test's hooks are the world.
-   *
-   * The plugins load at the test's first call on `$`, so a test registers
-   * its hooks before it, as a module registers its own in `register()`.
-   */
-  export type TestBody = ($: Engine, on: import('claude-code').On) => unknown
-
-  /**
-   * A plugin a test writes inline, loaded as a plugin folder is: its name,
-   * the tier it loads in (`user` when not given), and its hooks module's
-   * `register`, written `register(on) { ... }`. `register` is
-   * self-contained, as a module's is: it closes over nothing of the test file.
-   */
-  export type Plugin = {
-    name: string
-    tier?: Exclude<import('claude-code').Tier, 'core'>
-    register: import('claude-code').Register
-  }
-
-  /**
-   * What `test` takes beside its name: the inline plugins it loads beside
-   * the one under test, and how long it may run (5000 ms when not given).
-   */
-  export type TestOptions = {
-    plugins?: readonly Plugin[]
-    timeoutMs?: number
-  }
-
-  /**
-   * One test: it passes when `body` returns or resolves, fails when it
-   * throws, rejects or outlasts its time; a failure carries what the engine
-   * reported meanwhile (each hook it skipped, and why).
-   */
-  export function test(name: string, body: TestBody): void
-  export function test(name: string, options: TestOptions, body: TestBody): void
-
-  /**
-   * A group of tests: its name leads the title of each test inside.
-   */
-  export function describe(name: string, body: () => void): void
-
-  /**
-   * The tier the plugin under test loads in, once for the file, at its top
-   * level: `prepend`, `user` (when unsaid), `append` or `builtin`.
-   */
-  export function tier(tier: Exclude<import('claude-code').Tier, 'core'>): void
-
-  /**
-   * A rendered tree's text as it reads: its strings, in order.
-   */
-  export function textOf(tree: unknown): string
-
-  /**
-   * Answers `$.env.get` from `variables` beneath the plugins: a variable
-   * not listed is unset. A hook of the test's, visible where it is called.
-   */
-  export function memoryEnv(
-    on: import('claude-code').On,
-    variables: Readonly<Record<string, string>>,
-  ): void
-
-  /**
-   * Answers `$.store` beneath the plugins from a store in memory, starting
-   * with `entries`: `get`, `set`, `delete` and `keys` over it, as the
-   * engine keeps a plugin's own. Hooks of the test's, visible where called.
-   */
-  export function memoryStore(
-    on: import('claude-code').On,
-    entries?: Readonly<Record<string, unknown>>,
-  ): void
-
-  /**
-   * The clock `memoryClock` hands back: the time its hooks answer, and the
-   * only ways it moves.
-   */
-  export type MemoryClock = {
-    /**
-     * The time now, in milliseconds: what `$.clock.now()` resolves beneath
-     * the plugins.
-     */
-    now(): number
-
-    /**
-     * Moves the clock `ms` on. Each wait due on the way (`$.clock.sleep`,
-     * `after`, `every`, and this clock's own `sleep`) resolves in the
-     * order it comes due, the clock reading its time as it does, and what
-     * each started runs before the next; an interval's next period, asked as
-     * one resolves, comes due in the same advance when it fits.
-     */
-    advance(ms: number): Promise<void>
-
-    /**
-     * Moves the clock to `ms`, at or past now, as `advance` would; it does
-     * not run backwards.
-     */
-    set(ms: number): Promise<void>
-
-    /**
-     * Resolves once the clock has moved `ms` past now: how a hook of the
-     * test's answers late (a git that hangs until its timeout).
-     */
-    sleep(ms: number): Promise<void>
-  }
-
-  /**
-   * Answers `$.clock` beneath the plugins from a clock in memory that starts
-   * at `now` (0 when unsaid) and moves only when the test moves it:
-   * `clock.now` reads it, and each `clock.sleep`, `clock.after` and
-   * `clock.every` is held until an `advance` crosses the time it is due,
-   * or dropped when its dispatch aborts (a timer's `cancel()`, an unload).
-   * Hooks of the test's, visible where called; a wait nothing answers meets
-   * the bottom hook like any event, and one held longer than a hook's budget
-   * (ten seconds of real time) is let go as a hook that overran.
-   *
-   * @example
-   * const clock = memoryClock(on)
-   * await $.session.start(SESSION)
-   * await clock.advance(1000)
-   */
-  export function memoryClock(
-    on: import('claude-code').On,
-    options?: { now?: number },
-  ): MemoryClock
+  export type AsyncMatchers = {
+      [K in keyof Matchers]: (...args: Parameters<Matchers[K]>) => Promise<void>;
+  };
 
   /**
    * A class, as `toThrow`, `toBeInstanceOf` and `expect.any` take it.
    */
-  export type Constructor = abstract new (...args: never[]) => unknown
+  export type Constructor = abstract new (...args: never[]) => unknown;
 
   /**
-   * A value that matches by a rule inside `toEqual` and its kin.
+   * A group of tests: its name leads the title of each test declared inside,
+   * and its body runs at once, while the file loads.
+   *
+   * @param name the group's name
+   * @param body declares the group's tests
    */
-  export type AsymmetricMatcher = { readonly text: string }
+  export const describe: (name: string, body: () => void) => void;
 
   /**
-   * The checks `expect(received)` offers; each throws when it fails.
+   * What a test holds as `$`, the engine's own: every call on it is made as
+   * the REPL, the query loop and the render sites make theirs, over every plugin.
+   *
+   * `next.origin` is the engine, and the whole chain runs over the plugins
+   * loaded. A tool call's `tool_use_id` is minted when left out, as the engine
+   * mints it; `$.ui.press` is the terminal pressing a Button a test rendered.
    */
-  export type Matchers = {
-    toBe(expected: unknown): void
-    toEqual(expected: unknown): void
-    toStrictEqual(expected: unknown): void
-    toMatchObject(expected: object): void
-    toContain(item: unknown): void
-    toContainEqual(item: unknown): void
-    toHaveLength(length: number): void
-    toHaveProperty(path: string | readonly string[], value?: unknown): void
-    toBeUndefined(): void
-    toBeDefined(): void
-    toBeNull(): void
-    toBeTruthy(): void
-    toBeFalsy(): void
-    toBeNaN(): void
-    toBeGreaterThan(bound: number | bigint): void
-    toBeGreaterThanOrEqual(bound: number | bigint): void
-    toBeLessThan(bound: number | bigint): void
-    toBeLessThanOrEqual(bound: number | bigint): void
-    toMatch(pattern: string | RegExp): void
-    toStartWith(prefix: string): void
-    toEndWith(suffix: string): void
-    toBeInstanceOf(constructor: Constructor): void
-    toThrow(expected?: string | RegExp | Constructor | { message: string }): void
-  }
+  export type Engine = {
+      [N in keyof EventCalls]: N extends 'ui' ? EngineNoun<N> & EnginePress : EngineNoun<N>;
+  };
 
   /**
-   * The same checks on what a promise settles with.
+   * One call on the engine's `$`: the event's input whole, as an engine call
+   * site passes it, to its result, or for a streaming event to its stream.
    */
-  export type AsyncMatchers = {
-    [K in keyof Matchers]: (...args: Parameters<Matchers[K]>) => Promise<void>
-  }
+  export type EngineCall<E extends EventName> = E extends StreamingEventName ? (e: Args<E>) => HookStream<Chunk<E>, ResultOf[E]> : (e: Args<E>) => Promise<ResultOf[E]>;
+
+  /**
+   * One noun of the engine's `$`: each of its events as the engine calls it,
+   * `tool.call` and `ui.render` typed per tool and component, `ui.resolve` out.
+   */
+  export type EngineNoun<N extends keyof EventCalls> = {
+      [V in EngineNounEvent<N>]: `${N}.${V}` extends 'tool.call' | 'ui.render' ? EventCalls[N][V] : EngineCall<`${N}.${V}` & EventName>;
+  };
+
+  /**
+   * The events of one noun a test's `$` carries: every one but `ui.resolve`,
+   * which a render hook calls on its own `$` and the engine never raises.
+   */
+  export type EngineNounEvent<N extends keyof EventCalls> = Exclude<keyof EventCalls[N] & string, `${N}.resolve` extends 'ui.resolve' ? 'resolve' : never>;
+
+  /**
+   * The terminal pressing a Button a test rendered: the `ui.press` chain over
+   * every plugin hooked on it, the Button's own `onPress` at the bottom.
+   */
+  export type EnginePress = {
+      /**
+       * Presses the Button, as a click or its hotkey does.
+       *
+       * @param target whose Button, its key, and the instance when several
+       * @returns what the chain settled on; rejects when no such Button is
+       *   drawn on the terminal, or several are and no instance is named
+       */
+      press: (target: PressTarget) => Promise<UiPressResult | undefined>;
+  };
+
+  /**
+   * The checks on a value (`expect(received)`), and with them the matchers
+   * that stand inside an expected value (`expect.any(Number)`).
+   */
+  export type Expect = Expecting & Matching;
+
+  /**
+   * Checks a value: `expect(received).toEqual(expected)` throws an
+   * AssertionError naming both sides when it fails, a message given leading.
+   *
+   * `.not` negates; `.resolves` and `.rejects` check what a promise settles
+   * with; `expect.any(Number)` and its kin stand inside an expected value.
+   */
+  export const expect: Expect;
 
   /**
    * What `expect(received)` answers: the checks, their negation, and the
-   * checks on what a promise resolves or rejects with.
+   * checks on what a promise received resolves or rejects with.
    */
-  export type Expectation = Matchers & {
-    not: Matchers
-    resolves: AsyncMatchers & { not: AsyncMatchers }
-    rejects: AsyncMatchers & { not: AsyncMatchers }
-  }
+  export type Expectation = Negatable<Matchers> & {
+      /**
+       * The checks on what the promise received resolves with; a rejection
+       * fails them.
+       */
+      resolves: Negatable<AsyncMatchers>;
+      /**
+       * The checks on what the promise received rejects with; a resolution
+       * fails them.
+       */
+      rejects: Negatable<AsyncMatchers>;
+  };
 
   /**
-   * `expect(received, message?)`, and the matchers used inside the checks.
+   * `expect(received, message?)`: the checks on a value, a message of the
+   * test's own leading a failure's.
    */
-  export const expect: {
-    (received: unknown, message?: string): Expectation
-    any(constructor: Constructor): AsymmetricMatcher
-    anything(): AsymmetricMatcher
-    stringContaining(text: string): AsymmetricMatcher
-    stringMatching(pattern: string | RegExp): AsymmetricMatcher
-    objectContaining(shape: object): AsymmetricMatcher
-    arrayContaining(items: readonly unknown[]): AsymmetricMatcher
-  }
+  export type Expecting = (received: unknown, message?: string) => Expectation;
+
+  /**
+   * The checks `expect(received)` offers; each throws an AssertionError when
+   * it fails, naming what was expected and what was received.
+   */
+  export type Matchers = {
+      /**
+       * Passes when received is the value, by `Object.is`.
+       *
+       * @param expected the value
+       */
+      toBe: (expected: unknown) => void;
+      /**
+       * Passes when received equals the value in structure, properties holding
+       * undefined ignored; `expect.any` and its kin match inside it.
+       *
+       * @param expected the value
+       */
+      toEqual: (expected: unknown) => void;
+      /**
+       * As `toEqual`, but undefined properties and prototypes count.
+       *
+       * @param expected the value
+       */
+      toStrictEqual: (expected: unknown) => void;
+      /**
+       * Passes when received holds at least the object's properties, equal.
+       *
+       * @param expected the object
+       */
+      toMatchObject: (expected: object) => void;
+      /**
+       * Passes when a string received includes the item, or an iterable
+       * received has an element that is it.
+       *
+       * @param item the substring or element
+       */
+      toContain: (item: unknown) => void;
+      /**
+       * Passes when an iterable received has an element equal to the item.
+       *
+       * @param item the element
+       */
+      toContainEqual: (item: unknown) => void;
+      /**
+       * Passes when received's `length` is the number.
+       *
+       * @param length the number
+       */
+      toHaveLength: (length: number) => void;
+      /**
+       * Passes when received holds a property at the path (`a.b`, or the keys
+       * in order), equal to the value when one is given.
+       *
+       * @param path the property's path
+       * @param value what it must equal, when given
+       */
+      toHaveProperty: (path: string | readonly string[], value?: unknown) => void;
+      /**
+       * Passes when received is undefined.
+       */
+      toBeUndefined: () => void;
+      /**
+       * Passes when received is anything but undefined.
+       */
+      toBeDefined: () => void;
+      /**
+       * Passes when received is null.
+       */
+      toBeNull: () => void;
+      /**
+       * Passes when received is truthy.
+       */
+      toBeTruthy: () => void;
+      /**
+       * Passes when received is falsy.
+       */
+      toBeFalsy: () => void;
+      /**
+       * Passes when received is NaN.
+       */
+      toBeNaN: () => void;
+      /**
+       * Passes when received is greater than the bound.
+       *
+       * @param bound the bound
+       */
+      toBeGreaterThan: (bound: number | bigint) => void;
+      /**
+       * Passes when received is the bound or greater.
+       *
+       * @param bound the bound
+       */
+      toBeGreaterThanOrEqual: (bound: number | bigint) => void;
+      /**
+       * Passes when received is less than the bound.
+       *
+       * @param bound the bound
+       */
+      toBeLessThan: (bound: number | bigint) => void;
+      /**
+       * Passes when received is the bound or less.
+       *
+       * @param bound the bound
+       */
+      toBeLessThanOrEqual: (bound: number | bigint) => void;
+      /**
+       * Passes when a string received includes the text, or the pattern matches
+       * it.
+       *
+       * @param pattern the text or pattern
+       */
+      toMatch: (pattern: string | RegExp) => void;
+      /**
+       * Passes when a string received starts with the prefix.
+       *
+       * @param prefix the prefix
+       */
+      toStartWith: (prefix: string) => void;
+      /**
+       * Passes when a string received ends with the suffix.
+       *
+       * @param suffix the suffix
+       */
+      toEndWith: (suffix: string) => void;
+      /**
+       * Passes when received is an instance of the class.
+       *
+       * @param expected the class
+       */
+      toBeInstanceOf: (expected: Constructor) => void;
+      /**
+       * Passes when calling received throws (or, under `rejects`, the rejection
+       * is) an error as described: by substring, pattern, class or message.
+       *
+       * @param expected the description; any throw passes without one
+       */
+      toThrow: (expected?: ThrowExpectation) => void;
+  };
+
+  /**
+   * The matchers that stand inside an expected value, each matching received
+   * there by a rule instead of by equality.
+   */
+  export type Matching = {
+      /**
+       * Matches any instance of the class, a primitive by its wrapper
+       * (`expect.any(Number)`).
+       *
+       * @param expected the class
+       * @returns the matcher
+       */
+      any: (expected: Constructor) => AsymmetricMatcher;
+      /**
+       * Matches anything but null and undefined.
+       *
+       * @returns the matcher
+       */
+      anything: () => AsymmetricMatcher;
+      /**
+       * Matches a string that includes the text.
+       *
+       * @param text the substring
+       * @returns the matcher
+       */
+      stringContaining: (text: string) => AsymmetricMatcher;
+      /**
+       * Matches a string the pattern matches.
+       *
+       * @param pattern the pattern, or the source of one
+       * @returns the matcher
+       */
+      stringMatching: (pattern: string | RegExp) => AsymmetricMatcher;
+      /**
+       * Matches an object holding at least the shape's properties, equal.
+       *
+       * @param shape the properties
+       * @returns the matcher
+       */
+      objectContaining: (shape: object) => AsymmetricMatcher;
+      /**
+       * Matches an array holding an element equal to each of the items.
+       *
+       * @param items the elements
+       * @returns the matcher
+       */
+      arrayContaining: (items: readonly unknown[]) => AsymmetricMatcher;
+  };
+
+  /**
+   * The world beneath the plugins, mocked noun by noun: each member registers
+   * hooks of the test's on `on`, visible where the test calls it.
+   */
+  export type Mock = {
+      /**
+       * Answers `$.clock` from a clock in memory that moves only when the test
+       * moves it: `clock.now` reads it, and each wait is held.
+       *
+       * A held wait resolves when an advance crosses the time it is due, and is
+       * dropped when its dispatch aborts; one held past a hook's budget (ten
+       * seconds of real time) is let go, as a hook that overran.
+       *
+       * @param on the test's `on`
+       * @param options where the clock starts (`now`, 0 when not given)
+       * @returns the clock: its time, and the calls that move it
+       */
+      clock: (on: On, options?: MockClockOptions) => MockClock;
+      /**
+       * Answers `$.store` from a store in memory: `get`, `set`, `delete` and
+       * `keys` over it, as the engine keeps a plugin's own.
+       *
+       * @param on the test's `on`
+       * @param entries what the store holds at the start (nothing when not given)
+       */
+      store: (on: On, entries?: Readonly<Record<string, unknown>>) => void;
+      /**
+       * Answers `$.env.get` from a set of variables; one not listed is unset.
+       *
+       * @param on the test's `on`
+       * @param variables the environment the plugins read
+       */
+      env: (on: On, variables: Readonly<Record<string, string>>) => void;
+  };
+
+  /**
+   * The world beneath the plugins, mocked noun by noun: `mock.clock`,
+   * `mock.store` and `mock.env`.
+   *
+   * Each registers hooks of the test's on the `on` it is handed, visible where
+   * the test calls it, and answers its noun from memory.
+   */
+  export const mock: Mock;
+
+  /**
+   * The clock `mock.clock` hands back: the time its hooks answer, and the only
+   * ways it moves.
+   */
+  export type MockClock = {
+      /**
+       * The time now, in milliseconds: what `$.clock.now()` resolves beneath the
+       * plugins.
+       *
+       * @returns the time
+       */
+      now: () => number;
+      /**
+       * Moves the clock on, resolving each wait due on the way (`$.clock.sleep`,
+       * `after`, `every`, this clock's `sleep`) in the order it comes due.
+       *
+       * The clock reads each wait's time as it resolves, and what one started
+       * runs before the next resolves.
+       *
+       * @param ms how far to move, in milliseconds
+       * @returns resolves once the clock is there and the event loop settled
+       */
+      advance: (ms: number) => Promise<void>;
+      /**
+       * Moves the clock to a time at or past now, as `advance` would.
+       *
+       * @param ms the time, in milliseconds
+       * @returns resolves once the clock is there and the event loop settled
+       */
+      set: (ms: number) => Promise<void>;
+      /**
+       * Resolves once the clock has moved this far past now: how a hook of the
+       * test's answers late.
+       *
+       * @param ms how far, in milliseconds
+       * @returns resolves when an advance crosses that time
+       */
+      sleep: (ms: number) => Promise<void>;
+  };
+
+  /**
+   * Where a mocked clock starts: `now`, in milliseconds (0 when not given).
+   */
+  export type MockClockOptions = {
+      now?: number;
+  };
+
+  /**
+   * A set of checks and, under `not`, the same set passing where they fail.
+   */
+  export type Negatable<M> = M & {
+      /**
+       * The checks negated.
+       */
+      not: M;
+  };
+
+  /**
+   * Written inline in a test and loaded as a plugin folder is: its name, the
+   * tier it loads in (`user` when not given), and its hooks module's `register`.
+   *
+   * `register` is written `register(on) { ... }` and is self-contained, as a
+   * module's is: it closes over nothing of the test file.
+   */
+  export type Plugin = {
+      name: string;
+      tier?: PluginTier;
+      register: Register;
+  };
+
+  /**
+   * A tier a plugin loads in: every tier but the engine's own.
+   */
+  export type PluginTier = Exclude<Tier, 'core'>;
+
+  /**
+   * What `$.ui.press` takes: the plugin whose `ui.render` hook drew the Button,
+   * the `key` it gave it, and the instance when it drew one in several.
+   */
+  export type PressTarget = {
+      plugin: string;
+      key: string;
+      requestId?: string;
+  };
+
+  /**
+   * One test: it passes when its body returns or resolves, and fails when it
+   * throws, rejects or outlasts its time (5000 ms, or `timeoutMs`).
+   *
+   * The body gets the engine's `$` and an `on` whose hooks sit beneath every
+   * plugin; `plugins` load inline plugins beside the one under test. A failure
+   * carries what the engine reported meanwhile: each hook it skipped, and why.
+   *
+   * @param name the test's name, led in its title by the describes around it
+   * @param rest the body, `($, on) => ...`, or the options then the body
+   */
+  export const test: (name: string, ...rest: TestRest) => void;
+
+  /**
+   * A test: the engine's `$`, and `on`, a plugin's registrar, whose hooks sit
+   * beneath every plugin; beneath them the bottom hook throws, naming its event.
+   *
+   * The plugins load at the test's first call on `$`, so a test registers its
+   * hooks before it, as a module registers its own in `register()`.
+   */
+  export type TestBody = ($: Engine, on: On) => unknown;
+
+  /**
+   * What `test` takes beside its name: the inline plugins it loads beside the
+   * one under test, and how long it may run (5000 ms when not given).
+   */
+  export type TestOptions = {
+      plugins?: readonly Plugin[];
+      timeoutMs?: number;
+  };
+
+  /**
+   * What follows a test's name: its body, or its options then its body.
+   */
+  export type TestRest = readonly [body: TestBody] | readonly [options: TestOptions, body: TestBody];
+
+  /**
+   * What `toThrow` compares the thrown error with: a substring or pattern of
+   * its message, its class, a value carrying the whole message, or nothing.
+   */
+  export type ThrowExpectation = string | RegExp | Constructor | WithMessage;
+
+  /**
+   * Says which tier the plugin under test loads in, once, at the top of the
+   * file: `prepend`, `user` (when unsaid), `append` or `builtin`.
+   *
+   * @param tier the tier
+   */
+  export const tier: (tier: PluginTier) => void;
+
+  /**
+   * An error-like value `toThrow` compares by its whole message.
+   */
+  export type WithMessage = {
+      message: string;
+  };
 }
 
 // The inputs of the built-in tools this build has, from each tool's

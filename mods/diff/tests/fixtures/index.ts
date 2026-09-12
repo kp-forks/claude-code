@@ -13,5 +13,6 @@ export * from './repository.js'
 export * from './session.js'
 export * from './settle-ms.js'
 export * from './starts-session.js'
+export * from './text-of.js'
 
 export * as default from '.'
