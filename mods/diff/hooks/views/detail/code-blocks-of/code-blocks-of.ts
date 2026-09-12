@@ -36,15 +36,19 @@ export function codeBlocksOf(hunks: readonly Git.Hunk[]): Types.CodeBody {
       const last = blocks.at(-1)
       const source = hunkSourceOf(piece)
       const isHunkStart = at === 0
+
       const isJoining =
         isHunkStart &&
         last !== undefined &&
         last.source.length + 1 + source.length <= MAX_CODE_CHARS
+
       const hasDivider = isHunkStart && !isJoining && last !== undefined
       const overhead = isJoining ? 1 : hasDivider ? HUNK_DIVIDER.length : 0
+
       const addedNodes = isJoining
         ? 0
         : 1 + (hasDivider ? HUNK_DIVIDER_NODES : 0)
+
       const room = MAX_BODY_CHARS - chars - overhead
       const fitted = source.length <= room ? piece : leadingHunkOf(piece, room)
       const isOverNodes = nodes + addedNodes > MAX_BODY_NODES
@@ -63,6 +67,7 @@ export function codeBlocksOf(hunks: readonly Git.Hunk[]): Types.CodeBody {
         source: isJoining ? `${last.source}\n${text}` : text,
         hasDivider: isJoining ? last.hasDivider : hasDivider,
       })
+
       chars += overhead + text.length
       nodes += addedNodes
 

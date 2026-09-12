@@ -16,6 +16,7 @@ export function paneToggleOf(
   pane: PaneBelief,
 ): 'open' | 'close' | 'too-narrow' {
   const isClosing = pane.isBelievedOpen && pane.wasDrawnWhenProbed
+
   const isTooNarrow =
     pane.columns !== null && pane.columns < Limits.OPEN_MIN_COLUMNS
 

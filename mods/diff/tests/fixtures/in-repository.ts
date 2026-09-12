@@ -20,11 +20,13 @@ export function inRepository(on: On) {
   const opened = keeping<Args<'ui.open'>>()
   const closed = keeping<Args<'ui.close'>>()
   const clock = startsSession(on)
+
   on('process.run', ($, e) => {
     runs.push(e)
 
     return { value: gitIn(e.argv) }
   })
+
   on('ui.open', opened.hook)
   on('ui.close', closed.hook)
   on('ui.invalidate', () => ({ value: undefined }))

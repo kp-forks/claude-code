@@ -15,6 +15,7 @@ describe('register', () => {
     },
     async ($, on) => {
       on('settings.read', () => ({ value: Fixtures.ALLOWLIST }))
+
       const registered = Fixtures.toolsRegistered(on)
 
       await $.session.start(Fixtures.SESSION)
@@ -28,6 +29,7 @@ describe('register', () => {
     { plugins: [Fixtures.registering('mine')] },
     async ($, on) => {
       on('settings.read', () => ({ value: Fixtures.NO_ALLOWLIST }))
+
       const registered = Fixtures.toolsRegistered(on)
 
       await $.session.start(Fixtures.SESSION)
@@ -41,6 +43,7 @@ describe('register', () => {
     { plugins: [Fixtures.registering('mine')] },
     async ($, on) => {
       on('settings.read', () => ({ deny: 'managed settings unreadable' }))
+
       const registered = Fixtures.toolsRegistered(on)
 
       await $.session.start(Fixtures.SESSION)

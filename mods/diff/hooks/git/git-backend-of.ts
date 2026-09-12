@@ -46,6 +46,7 @@ export async function gitBackendOf(
   }
 
   const run = runOf(repository)
+
   const depsOf = (): Types.GitDeps => ({
     run,
     repository,

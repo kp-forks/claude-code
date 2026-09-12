@@ -18,8 +18,10 @@ export function textOf(tree: unknown): string {
   }
 
   const props: unknown = Reflect.get(tree, 'props')
+
   const label: unknown =
     typeof props === 'object' && props ? Reflect.get(props, 'label') : undefined
+
   const lead = typeof label === 'string' ? label : ''
 
   return `${lead}${textOf(Reflect.get(tree, 'children') ?? [])}`

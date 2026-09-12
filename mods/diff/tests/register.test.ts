@@ -9,6 +9,7 @@ describe('register', () => {
   test('/diff at boot joins the boot probe, then asks again', async ($, on) => {
     const probes: (readonly string[])[] = []
     const clock = Fixtures.startsSession(on)
+
     on('process.run', async ($, e) => {
       probes.push(e.argv)
 
@@ -22,8 +23,11 @@ describe('register', () => {
     })
 
     const booting = $.session.start(Fixtures.SESSION)
+
     await clock.advance(0)
+
     const ran = $.command.run(Fixtures.DIFF)
+
     await clock.advance(0)
 
     expect(probes, 'the boot probe, which /diff joined').toHaveLength(1)
@@ -34,13 +38,16 @@ describe('register', () => {
     expect(await ran).toEqual({
       text: expect.stringContaining("isn't in a git repository"),
     })
+
     expect(probes, 'then one more of its own').toHaveLength(2)
   })
 
   test('outside a repository /diff says so, opens nothing', async ($, on) => {
     const opened: string[] = []
+
     Fixtures.startsSession(on)
     on('process.run', () => ({ value: Fixtures.NOT_A_REPOSITORY }))
+
     on('ui.open', ($, e, next) => {
       opened.push(e.id)
 
@@ -48,6 +55,7 @@ describe('register', () => {
     })
 
     await $.session.start(Fixtures.SESSION)
+
     const { text } = await $.command.run(Fixtures.DIFF)
 
     expect(text).toContain("isn't in a git repository")
@@ -59,6 +67,7 @@ describe('register', () => {
     on('process.run', () => ({ deny: Fixtures.GIT_HUNG }))
 
     await $.session.start(Fixtures.SESSION)
+
     const { text } = await $.command.run(Fixtures.DIFF)
 
     expect(text).toContain("git didn't answer")
@@ -66,10 +75,12 @@ describe('register', () => {
 
   test('when the built-in holds /diff, the mod stands down', async ($, on) => {
     const logged: string[] = []
+
     mock.clock(on)
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     on('command.register', () => ({ deny: Fixtures.BUILTIN_HOLDS }))
     on('command.run', () => ({ text: 'the built-in /diff ran' }))
+
     on('ui.log', ($, e) => {
       logged.push(e.text)
 
@@ -81,16 +92,20 @@ describe('register', () => {
     expect(await $.command.run(Fixtures.DIFF)).toEqual({
       text: 'the built-in /diff ran',
     })
+
     expect(logged).toEqual([])
   })
 
   test('a refusal the built-in did not cause is said aloud', async ($, on) => {
     const logged: string[] = []
+
     mock.clock(on)
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+
     on('command.register', () => ({
       deny: '32 commands are registered already',
     }))
+
     on('ui.log', ($, e) => {
       logged.push(e.text)
 
@@ -114,6 +129,7 @@ describe('register', () => {
     expect(world.opened.map(pane => pane.id)).toEqual(['diff'])
 
     await world.clock.advance(Fixtures.SETTLE_MS)
+
     const drawn = Fixtures.textOf(await $.ui.render(Fixtures.PANE))
 
     expect(drawn).toContain('1 file changed')
@@ -141,16 +157,19 @@ describe('register', () => {
 
   test('a wide terminal opens the pane at the first edit', async ($, on) => {
     const world = Fixtures.inRepository(on)
+
     on('tool.call', () => ({ result: 'edited' }))
 
     await $.session.start(Fixtures.SESSION)
     await $.ui.render(Fixtures.HINT)
+
     await $.tool.call({
       tool: 'Edit',
       file_path: '/work/app.ts',
       old_string: '1',
       new_string: '2',
     })
+
     await world.clock.advance(Fixtures.SETTLE_MS)
 
     expect(world.opened.map(pane => pane.id)).toEqual(['diff'])
@@ -158,6 +177,7 @@ describe('register', () => {
 
   test('/clear closes the pane it finds open', async ($, on) => {
     const world = Fixtures.inRepository(on)
+
     on('command.run', { command: 'clear' }, () => ({}))
 
     await $.session.start(Fixtures.SESSION)

@@ -11,6 +11,7 @@ import { hunkHeaderOf } from '../../hunk-header-of'
  */
 export function firstLineCut(hunk: Git.Hunk, maxChars: number) {
   const [first = ''] = hunk.lines
+
   const kept = first.slice(
     0,
     Math.max(

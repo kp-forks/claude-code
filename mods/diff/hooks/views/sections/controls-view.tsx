@@ -29,6 +29,7 @@ export function controlsView(
   const { Box, Select } = kit.ui
   const { source, turns } = model
   const hasTurns = turns.length > 0
+
   const sourcePicker = hasTurns ? (
     <Select
       key="source"
@@ -44,10 +45,12 @@ export function controlsView(
       onSelect={value => kit.actions.chooseSource(value)}
     />
   ) : null
+
   const isCurrent = source.kind === 'current'
   const fetchedSource = model.data?.source
   const isWorkingTree = fetchedSource?.kind === 'working-tree'
   const base = isWorkingTree ? fetchedSource.base : model.words.base
+
   const basePicker = isCurrent ? (
     <Select
       key="base"
@@ -55,6 +58,7 @@ export function controlsView(
       options={model.baseModes.map(mode => {
         const isUncommitted = mode === 'uncommitted'
         const isSession = mode === 'session'
+
         const label = isUncommitted
           ? `uncommitted (vs ${base})`
           : isSession
@@ -67,7 +71,9 @@ export function controlsView(
       onSelect={value => kit.actions.chooseBase(value)}
     />
   ) : null
+
   const pickers = present([sourcePicker, basePicker])
+
   const row = (
     <Box flexDirection="row" gap={2}>
       {pickers}

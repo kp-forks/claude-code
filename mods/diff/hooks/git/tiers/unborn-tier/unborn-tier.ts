@@ -31,6 +31,7 @@ export async function unbornTier(
   }
 
   const isOverlaid = staged.files.length > 0
+
   const unstaged = isOverlaid
     ? await Probes.unstagedNumstat(run)
     : EMPTY_NUMSTAT

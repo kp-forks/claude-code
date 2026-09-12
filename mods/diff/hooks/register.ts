@@ -59,6 +59,7 @@ export function register(on: On) {
     sessionStartMsOf: () => sessionStartMs,
     onBranchBase: base => {
       const isError = base.kind === 'error'
+
       const outcome: Record.MarkOutcome = isError
         ? { kind: 'sad', reason: base.reason }
         : {
@@ -70,6 +71,7 @@ export function register(on: On) {
 
       if (!loggedBaseKinds.has(outcome.kind)) {
         loggedBaseKinds.add(outcome.kind)
+
         Record.recorderOf(currentOf(engine)).mark(
           Record.FEATURES.baseResolve,
           outcome,
@@ -93,6 +95,7 @@ export function register(on: On) {
   async function probeBackend(engine: Host): Promise<boolean> {
     const asked = { isAnswered: true }
     const probeHost = backendHostOf(engine)
+
     const probed = await Backend.backendOf(
       {
         ...probeHost,
@@ -100,11 +103,13 @@ export function register(on: On) {
           probeHost.run(argv, init).catch((error: unknown) => {
             asked.isAnswered &&=
               argv[0] !== 'git' || !/\baborted\b/.test(messageOf(error))
+
             throw error
           }),
       },
       Backend.INSTALLED_BACKEND_PROBES,
     )
+
     backend ??= probed
 
     if (!probed || backend !== probed) {
@@ -116,7 +121,9 @@ export function register(on: On) {
         .storeGet(Names.baseStoreKeyOf(probed.repository.toplevel))
         .catch(() => undefined),
     )
+
     const mode = stored && probed.baseModes.includes(stored) ? stored : null
+
     model = {
       ...model,
       words: probed.words,
@@ -173,6 +180,7 @@ export function register(on: On) {
     bodyKey = key
     model = { ...model, body: null, bodyState: 'loading' }
     redraw(engine)
+
     const body = await backend.fetchFileHunks(data, selected)
 
     if (bodyKey !== key) {
@@ -195,6 +203,7 @@ export function register(on: On) {
     timers.get('poll')?.cancel()
     polled.toplevel = pinned.repository.toplevel
     polled.headKey = ''
+
     timers.set(
       'poll',
       engine.every(Limits.HEAD_POLL_MS, () => {
@@ -204,6 +213,7 @@ export function register(on: On) {
 
         void readHeadKey().then(key => {
           const hasMoved = polled.headKey !== '' && key !== polled.headKey
+
           polled.headKey = key
 
           if (hasMoved) {
@@ -222,8 +232,10 @@ export function register(on: On) {
     }
 
     isRefreshing = true
+
     const record = Record.recorderOf(engine)
     const pinned = backend
+
     const fetched = (): Promise<Git.FetchOutcome> =>
       pinned
         ? pinned.fetchDiff(model.requestedMode)
@@ -231,10 +243,12 @@ export function register(on: On) {
 
     try {
       model = { ...model, isLoading: model.data === null }
+
       const [outcome, messages] = await Promise.all([
         fetched(),
         engine.messages().catch((): SessionMessage[] => []),
       ])
+
       model = PaneState.afterFetch(model, { outcome, messages })
 
       switch (outcome.kind) {
@@ -245,6 +259,7 @@ export function register(on: On) {
             kind: 'sad',
             reason: 'git_diff_failed',
           })
+
           break
         case 'data':
           generation += 1
@@ -286,6 +301,7 @@ export function register(on: On) {
 
   function scheduleRefresh(engine: Host): void {
     timers.get('refresh')?.cancel()
+
     timers.set(
       'refresh',
       engine.after(Limits.REFRESH_DEBOUNCE_MS, () => {
@@ -303,6 +319,7 @@ export function register(on: On) {
     const isManual = trigger === 'manual'
     await engine.openPane(isManual ? { ...pane, ...Names.FOCUSED_PANE } : pane)
     isPaneOpen = true
+
     const sessionId = await engine.sessionId().catch(() => null)
 
     if (sessionId !== null && sessionId !== shownSessionId) {
@@ -341,11 +358,15 @@ export function register(on: On) {
     }
 
     const preference = await engine.storeGet(Names.STORE_OPEN_KEY)
+
     await pinBackend(engine)
+
     const isKeptOpen = preference === true
+
     const floor = isKeptOpen
       ? Limits.OPEN_MIN_COLUMNS
       : Limits.AUTO_OPEN_MIN_COLUMNS
+
     const isEligible =
       preference !== false &&
       columns !== null &&
@@ -391,10 +412,12 @@ export function register(on: On) {
 
       bodyKey = null
       model = { ...model, requestedMode: mode, body: null, bodyState: 'idle' }
+
       Record.recorderOf(engine).mark(Record.FEATURES.baseSwitch, {
         kind: 'ok',
         props: { mode: { value: mode, of: model.baseModes } },
       })
+
       const toplevel = model.data?.repository.toplevel
 
       if (toplevel !== undefined) {
@@ -409,9 +432,11 @@ export function register(on: On) {
     chooseSource: value => {
       const index = Number(value)
       const isTurn = value !== 'current' && Number.isInteger(index)
+
       const source: PaneState.Source = isTurn
         ? { kind: 'turn', index }
         : { kind: 'current' }
+
       model = { ...model, source, selectedPath: null }
       void loadBody(engine)
       redraw(engine)
@@ -442,11 +467,14 @@ export function register(on: On) {
         model.body?.hunks ??
         [],
     )
+
     model = { ...model, armedPath: path }
+
     engine.status(
       `${Views.sanitizeName(path)} rides your next prompt (press ` +
         `asked ✓ to drop it)`,
     )
+
     redraw(engine)
   }
 
@@ -510,6 +538,7 @@ export function register(on: On) {
     }
 
     const { Box, Text, Button, Select, Code } = await $.ui.resolve(e)
+
     wasDrawnSinceProbe = true
     columns = e.viewport?.columns ?? columns
     model = { ...model, isFocused: e.props.isFocused }
@@ -624,6 +653,7 @@ export function register(on: On) {
     }
 
     const context = e.context ?? []
+
     const text = Ask.fittedAskTextOf(
       asked.text,
       Limits.PROMPT_CONTEXT_MAX_CHARS -
@@ -632,10 +662,12 @@ export function register(on: On) {
 
     if (text === undefined) {
       disarm(host)
+
       host.status(
         `${Views.sanitizeName(asked.path)}'s diff did not fit in the prompt ` +
           `and was dropped`,
       )
+
       redraw(host)
 
       return next(e)

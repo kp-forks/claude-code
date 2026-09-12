@@ -23,11 +23,14 @@ export async function untrackedRowsOf(
 ): Promise<readonly Types.FileStat[]> {
   const probedPaths = paths.slice(0, Limits.MAX_UNTRACKED_PROBES)
   const datings = await datingsOf(context, probedPaths)
+
   const probed = probedPaths.map(path => ({
     path,
     isPreSession: datings.get(path) !== 'session',
   }))
+
   const isWithPreSession = place.scope === 'with-pre-session'
+
   const earlier = isWithPreSession
     ? [
         ...probed.filter(file => file.isPreSession),
@@ -36,6 +39,7 @@ export async function untrackedRowsOf(
           .map(path => ({ path, isPreSession: true })),
       ]
     : []
+
   const ordered = [...probed.filter(file => !file.isPreSession), ...earlier]
 
   return ordered.slice(0, place.slots).map(file => ({

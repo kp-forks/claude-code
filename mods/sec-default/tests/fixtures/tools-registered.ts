@@ -11,7 +11,9 @@ import { registeredToolOf } from './registered-tool-of.js'
  */
 export function toolsRegistered(on: On) {
   const registered: string[] = []
+
   on('session.start', ($, e) => ({ cwd: e.cwd }))
+
   on('tool.register', ($, e, next) => {
     registered.push(next.origin.plugin)
 

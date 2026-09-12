@@ -11,6 +11,7 @@ describe('git', () => {
     await $.session.start(Fixtures.SESSION)
     await $.command.run(Fixtures.DIFF)
     await world.clock.advance(Fixtures.SETTLE_MS)
+
     const [discovery, ...pinned] = world.runs
 
     expect(discovery?.argv).toContain('--show-toplevel')
@@ -23,6 +24,7 @@ describe('git', () => {
         '--git-dir=/work/.git',
         '--work-tree=/work',
       ])
+
       expect(run.init).toMatchObject({ cwd: '/work', env: { LC_ALL: 'C' } })
     }
   })

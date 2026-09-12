@@ -32,6 +32,7 @@ export function telemetryOf(deps: TelemetryDeps): TelemetryTypes.Telemetry {
       model: await deps.model(),
       userType: environment.userType === 'ant' ? 'ant' : 'external',
     })
+
     const auth = await deps.authorize()
 
     if (!auth) {

@@ -33,6 +33,7 @@ export function kindWalkOf(
 
     const listed =
       held ?? entryKindsOf(directory === '' ? root : `${root}/${directory}`)
+
     listings.set(directory, listed)
 
     return listed

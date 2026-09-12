@@ -35,16 +35,21 @@ export function detailView(
   const code = codeBlocksOf(placeholder ? [] : (detail.body?.hunks ?? []))
   const isTruncated = detail.body?.isTruncated === true || code.isTruncated
   const path = Layout.sanitizeName(detail.path).slice(-MAX_CODE_CHARS)
+
   const nameOf = (name: string) =>
     Layout.truncateStart(Layout.sanitizeName(name), kit.columns)
+
   const renamedFrom =
     detail.renamedFrom === null ? null : nameOf(detail.renamedFrom)
+
   const asides = [
     renamedFrom === null ? null : `renamed from ${renamedFrom}`,
     detail.isUntracked ? 'untracked' : null,
     isTruncated ? 'truncated' : null,
   ].filter(word => word !== null)
+
   const aside = asides.length === 0 ? '' : ` (${asides.join(', ')})`
+
   const ask = placeholder
     ? []
     : [
@@ -52,6 +57,7 @@ export function detailView(
           {detail.isArmed ? 'asked ✓' : 'ask'}
         </Button>,
       ]
+
   const footer = isTruncated
     ? [
         <Text dimColor italic>
@@ -59,11 +65,13 @@ export function detailView(
         </Text>,
       ]
     : []
+
   const notes = (placeholder ?? []).map(line => (
     <Text dimColor italic wrap="wrap">
       {line}
     </Text>
   ))
+
   const hunks = code.blocks.flatMap(block => [
     ...(block.hasDivider ? [<Text dimColor>{HUNK_DIVIDER}</Text>] : []),
     <Code source={block.source} format="diff" path={path} />,

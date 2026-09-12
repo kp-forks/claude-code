@@ -19,6 +19,7 @@ export async function datingsOf(
   paths: readonly string[],
 ): Promise<ReadonlyMap<string, Types.Dating>> {
   const { sessionStartMs } = context.deps
+
   const stamps: readonly Types.Stamp[] = await Promise.all(
     paths.map(path => stampIfFile(context.stamps, path)),
   )

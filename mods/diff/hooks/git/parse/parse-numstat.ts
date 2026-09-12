@@ -26,11 +26,13 @@ export function parseNumstat(
     const [addedField, removedField, ...pathFields] = (records[at] ?? '').split(
       '\t',
     )
+
     const inline = pathFields.join('\t')
     const isRename = pathFields.length === 1 && inline === ''
     const renamedFrom = isRename ? (records[at + 1] ?? null) : null
     const path = isRename ? (records[at + 2] ?? '') : inline
     at += isRename ? RENAME_RECORDS : 1
+
     const isRow =
       addedField !== undefined && removedField !== undefined && path !== ''
 
@@ -41,6 +43,7 @@ export function parseNumstat(
     const isBinary = addedField === '-' || removedField === '-'
     const added = isBinary ? 0 : Number(addedField) || 0
     const removed = isBinary ? 0 : Number(removedField) || 0
+
     stats.filesCount += 1
     stats.linesAdded += added
     stats.linesRemoved += removed

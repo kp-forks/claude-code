@@ -10,14 +10,17 @@ describe('register', () => {
     { plugins: [Fixtures.recording] },
     async ($, on) => {
       mock.env(on, { USER_TYPE: 'ant' })
+
       const posts = Fixtures.firstPartySession(on)
 
       expect(
         await $.command.run(Fixtures.record(Fixtures.surveyAnswer())),
       ).toEqual({ text: 'sent' })
+
       expect(posts.map(post => post.init)).toMatchObject([
         { method: 'POST', auth: 'the-handle' },
       ])
+
       expect(posts.map(Fixtures.batchOf)).toMatchObject([
         {
           events: [
@@ -40,6 +43,7 @@ describe('register', () => {
     { plugins: [Fixtures.recording] },
     async ($, on) => {
       mock.env(on, {})
+
       const posts = Fixtures.firstPartySession(on)
 
       await $.command.run(
@@ -69,7 +73,9 @@ describe('register', () => {
     { plugins: [Fixtures.recording] },
     async ($, on) => {
       mock.env(on, { DO_NOT_TRACK: '1' })
+
       const posts = Fixtures.firstPartySession(on)
+
       const { text } = await $.command.run(
         Fixtures.record(Fixtures.surveyAnswer()),
       )
@@ -83,6 +89,7 @@ describe('register', () => {
     { plugins: [Fixtures.recording] },
     async ($, on) => {
       mock.env(on, { CLAUDE_CODE_USE_BEDROCK: '1' })
+
       const posts = Fixtures.firstPartySession(on)
 
       await $.command.run(Fixtures.record(Fixtures.surveyAnswer()))
@@ -96,7 +103,9 @@ describe('register', () => {
     { plugins: [Fixtures.recording] },
     async ($, on) => {
       mock.env(on, {})
+
       const posts = Fixtures.firstPartySession(on, null)
+
       const { text } = await $.command.run(
         Fixtures.record(Fixtures.surveyAnswer()),
       )
@@ -105,6 +114,7 @@ describe('register', () => {
         '$.telemetry.log: this session has no first-party credential to ' +
           'authorize',
       )
+
       expect(posts).toEqual([])
     },
   )
@@ -114,7 +124,9 @@ describe('register', () => {
     { plugins: [Fixtures.recording] },
     async ($, on) => {
       mock.env(on, {})
+
       const posts = Fixtures.firstPartySession(on)
+
       const { text } = await $.command.run({
         ...Fixtures.record(Fixtures.surveyAnswer()),
         args: '{"event":"survey_answered","props":{"note":"hello world"}}',

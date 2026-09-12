@@ -18,6 +18,7 @@ export function leadingHunkOf(hunk: Git.Hunk, maxChars: number): Git.Hunk {
       ...hunk,
       lines: hunk.lines.slice(0, taken + 1),
     })
+
     bodyChars += 1 + line.length
 
     if (header.length + bodyChars > maxChars) {

@@ -21,8 +21,10 @@ export async function statsOf(
   const run = context.run
 
   const shortstat = await run([...Argv.DIFF_LEADING_ARGS, base, '--shortstat'])
+
   const totals =
     shortstat.exitCode === 0 ? Parse.parseShortstat(shortstat.stdout) : null
+
   const isPastDetails =
     totals !== null && totals.filesCount > Limits.MAX_FILES_FOR_DETAILS
 
@@ -36,6 +38,7 @@ export async function statsOf(
     '--numstat',
     '-z',
   ])
+
   const isRead = Parse.isWholeAnswer(numstat)
 
   return isRead ? Parse.parseNumstat(numstat.stdout, Limits.MAX_FILES) : null

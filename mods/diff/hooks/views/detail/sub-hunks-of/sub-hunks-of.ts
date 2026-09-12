@@ -25,13 +25,16 @@ export function subHunksOf(
   while (rest.lines.length > 0) {
     const leading = leadingHunkOf(rest, maxChars)
     const isLineCut = leading.lines.length === 0
+
     const piece = isLineCut
       ? { ...rest, lines: [firstLineCut(rest, maxChars)] }
       : leading
+
     const taken = rest.lines.slice(0, piece.lines.length)
 
     hunks.push(piece)
     isTruncated ||= isLineCut
+
     rest = {
       oldStart: rest.oldStart + countOf(taken, line => !line.startsWith('+')),
       newStart: rest.newStart + countOf(taken, line => !line.startsWith('-')),

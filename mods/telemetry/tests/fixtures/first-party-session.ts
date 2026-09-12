@@ -16,9 +16,11 @@ export function firstPartySession(
   authorization: SessionAuthorization = BEARER,
 ) {
   const posts: Args<'http.fetch'>[] = []
+
   on('session.id', () => ({ value: 'the-session' }))
   on('session.model', () => ({ value: 'the-model' }))
   on('session.authorize', () => ({ value: authorization }))
+
   on('http.fetch', ($, e) => {
     posts.push(e)
 

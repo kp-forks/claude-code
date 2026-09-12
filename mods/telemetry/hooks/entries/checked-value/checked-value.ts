@@ -51,6 +51,7 @@ export function checkedValue(
 
   const members = value.of
   const chosen = value.value
+
   const isTokenList =
     members.length > 0 &&
     members.length <= CHOICES_LIMIT &&

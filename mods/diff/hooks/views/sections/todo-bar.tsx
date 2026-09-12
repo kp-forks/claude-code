@@ -27,10 +27,12 @@ export function todoBar(
   }
 
   const { Box, Text } = kit.ui
+
   const cells = Math.max(
     1,
     Math.min(TODO_BAR_CELLS, kit.columns - TODO_BAR_RESERVE),
   )
+
   const filled = Math.round((todos.done / todos.total) * cells)
 
   return (
