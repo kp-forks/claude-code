@@ -24,11 +24,11 @@ describe('register', () => {
 
     const booting = $.session.start(Fixtures.SESSION)
 
-    await clock.advance(0)
+    await clock.settle()
 
     const ran = $.command.run(Fixtures.DIFF)
 
-    await clock.advance(0)
+    await clock.settle()
 
     expect(probes, 'the boot probe, which /diff joined').toHaveLength(1)
 
@@ -148,7 +148,7 @@ describe('register', () => {
       element: 'close',
     })
 
-    await world.clock.advance(0)
+    await world.clock.settle()
 
     expect(world.closed.map(pane => pane.id)).toEqual(['diff'])
     expect(await $.command.run(Fixtures.DIFF)).toEqual({})

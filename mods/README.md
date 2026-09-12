@@ -72,8 +72,10 @@ each member a plain function over `on` registering hooks where the test calls
 it: `mock.env(on, variables)` for `$.env`, `mock.store(on, entries)` for
 `$.store`, and `mock.clock(on)` for `$.clock`, whose `advance(ms)` resolves
 every wait the mod asked for (`$.clock.sleep`, `after`, `every`) as the clock
-crosses it. `$.ui.press({ plugin, key })` presses a `Button` the test
-rendered, as a click in the terminal does.
+crosses it. To see what a dispatch does before it answers, start it
+unawaited, `await clock.settle()`, then look: the clock stays where it was.
+`$.ui.press({ plugin, key })` presses a `Button` the test rendered, as a
+click in the terminal does.
 
 `tsc -p mods/tsconfig.json` typechecks every mod's hooks and tests against
 `types/` and each mod's own `types/` contract.

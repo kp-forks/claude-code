@@ -8944,6 +8944,16 @@ declare module 'claude-code/testing' {
        */
       set: (ms: number) => Promise<void>;
       /**
+       * Lets what is already under way run as far as it can without the clock
+       * moving: every wait due now resolves and the event loop settles.
+       *
+       * The same as `advance(0)`; the name for the step between starting a
+       * dispatch unawaited and looking at what it did.
+       *
+       * @returns resolves once the event loop settled, the time where it was
+       */
+      settle: () => Promise<void>;
+      /**
        * Resolves once the clock has moved this far past now: how a hook of the
        * test's answers late.
        *
