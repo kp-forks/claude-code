@@ -26,7 +26,7 @@ jobs:
 
       - name: Run each mod's tests
         run: |
-          if ! claude plugin test --help >/dev/null 2>&1; then
+          if ! claude plugin test --help 2>/dev/null | grep -q '^Usage: claude plugin test'; then
             echo "claude $(claude --version) has no 'plugin test' yet; skipping the test step"
             exit 0
           fi
