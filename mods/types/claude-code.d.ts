@@ -243,8 +243,8 @@ declare module 'claude-code' {
        * True when the subagent will run in the background (or remotely). A
        * rewrite is read back as the call's `run_in_background`.
        *
-       * The agent's own definition, coordinator mode and remote isolation can
-       * still force it on, and disabled background tasks force it off.
+       * The agent's own definition and remote isolation can still force it on,
+       * and disabled background tasks force it off.
        */
       background: boolean;
       /**
@@ -9118,61 +9118,6 @@ declare module 'claude-code' {
       id: string
     }
     CronList: {}
-    DesignSync: {
-      method: "list_projects" | "get_project" | "list_files" | "get_file" | "finalize_plan" | "write_files" | "delete_files" | "register_assets" | "unregister_assets" | "create_project" | "report_validate"
-      /** Required for all methods except list_projects and create_project */
-      projectId?: string
-      /** get_file: file path to read */
-      path?: string
-      /** finalize_plan: exact paths or glob patterns that will be written. `*` matches within a single segment, `**` matches any depth (e.g. `ui_kits/acme/** /*.html`). Max 3 `*`/`**` wildcards per pattern and max 256 entries — use broader globs to cover more files rather than enumerating paths. */
-      writes?: string[]
-      /** finalize_plan: exact paths or glob patterns that will be deleted (same syntax and limits as writes). */
-      deletes?: string[]
-      /** write_files/delete_files/register_assets/unregister_assets: token from a prior finalize_plan call */
-      planId?: string
-      /** write_files: file contents to write (max 256 per call — split larger bundles across multiple write_files calls under the same planId). */
-      files?: Array<{
-        /** Path within the project, e.g. components/button/index.html */
-        path: string
-        /** Path on disk to read file contents from, relative to the localDir approved at finalize_plan. Preferred for anything you have on disk: the tool reads, encodes, and uploads directly so the contents never enter the model context. Mutually exclusive with data. */
-        localPath?: string
-        /** Inline file contents (UTF-8 text, or base64 when encoding is "base64"). For small dynamic content only — anything you have on disk should use localPath instead. */
-        data?: string
-        /** Set to "base64" for binary inline data */
-        encoding?: "base64"
-        mimeType?: string
-      }>
-      /** delete_files: paths to delete. unregister_assets: paths whose Design System pane card should be removed. Max 256 per call — split larger batches across multiple calls under the same planId. */
-      paths?: string[]
-      /** create_project: name for the new design-system project */
-      name?: string
-      /** register_assets: cards to register in the Design System pane. Each path must be in the finalized plan. Run after write_files succeeds. Max 256 per call. */
-      assets?: Array<{
-        /** Short human-readable label ("Primary buttons"), not a path */
-        name: string
-        /** Project-relative path to the preview/spec file this card renders */
-        path: string
-        /** Variants shown ("Primary / secondary / ghost, 3 sizes") */
-        subtitle?: string
-        /** Card dimensions in the Design System pane */
-        viewport?: {
-          width: number
-          height?: number
-        }
-        /** Free-form section label for the Design System pane (max 64 chars). Use the source design system's own categorization if it has one — e.g. Material has Buttons/Cards/Forms/etc., a corporate kit might have Actions/Forms/Navigation. Common foundational labels: "Type", "Colors", "Spacing", "Components", "Brand". The pane groups by the value you send. */
-        group?: string
-      }>
-      /** finalize_plan: directory the bundle was built into. write_files with localPath may only read files inside this directory. Defaults to the current working directory. Resolved to an absolute path and shown in the permission prompt. */
-      localDir?: string
-      /** report_validate: aggregate from the final .render-check.json — counts only, no component names or paths. */
-      counts?: {
-        total: number
-        bad: number
-        thin: number
-        variantsIdentical: number
-        iterations: number
-      }
-    }
     Edit: {
       /** The absolute path to the file to modify */
       file_path: string
@@ -9536,68 +9481,6 @@ declare module 'claude-code' {
         recurring?: boolean
         durable?: boolean
       }[]
-    }
-    DesignSync: {
-      method: "list_projects"
-      notice?: string
-      projects: {
-        projectId: string
-        name: string
-        ownerDisplayName?: string
-        isOwned?: boolean
-        updatedAt?: string
-      }[]
-    } | {
-      method: "get_project"
-      notice?: string
-      projectId: string
-      name: string
-      type?: string
-      ownerDisplayName?: string
-      isOwned?: boolean
-      canEdit?: boolean
-    } | {
-      method: "list_files"
-      notice?: string
-      paths: string[]
-    } | {
-      method: "get_file"
-      notice?: string
-      path: string
-      content: string
-      contentType: string
-      isBase64: boolean
-      truncated: boolean
-    } | {
-      method: "finalize_plan"
-      notice?: string
-      planId: string
-      writes: string[]
-      deletes: string[]
-    } | {
-      method: "write_files"
-      notice?: string
-      written: number
-    } | {
-      method: "delete_files"
-      notice?: string
-      deleted: number
-    } | {
-      method: "register_assets"
-      notice?: string
-      registered: number
-    } | {
-      method: "unregister_assets"
-      notice?: string
-      unregistered: number
-    } | {
-      method: "create_project"
-      notice?: string
-      projectId: string
-      name: string
-    } | {
-      method: "report_validate"
-      notice?: string
     }
     Edit: {
       /** The file path that was edited */
