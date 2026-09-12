@@ -1,4 +1,4 @@
-import type { TelemetryMarkKind } from 'claude-code'
+import type { TelemetryMarkKind } from '../../../types'
 
 /**
  * The three kinds a mark may be, in the order the feature events name them.

@@ -1,4 +1,6 @@
-import type { CommandRunInput, TelemetryLogEntry } from 'claude-code'
+import type { CommandRunInput } from 'claude-code'
+
+import type { TelemetryLogEntry } from '../../types'
 
 /**
  * The command that has the recording plugin log an entry, typed as the

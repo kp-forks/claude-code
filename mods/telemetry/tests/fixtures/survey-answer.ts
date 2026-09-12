@@ -1,4 +1,4 @@
-import type { TelemetryLogEntry } from 'claude-code'
+import type { TelemetryLogEntry } from '../../types'
 
 /**
  * A survey answered, as a plugin logs it.

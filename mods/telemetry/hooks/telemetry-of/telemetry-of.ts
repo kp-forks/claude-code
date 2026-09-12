@@ -1,5 +1,4 @@
-import type { Telemetry } from 'claude-code'
-
+import type { Telemetry } from '../../types'
 import Entries from '../entries'
 import { isAnalyticsOff } from '../is-analytics-off'
 import type { TelemetryDeps } from '../telemetry-deps'

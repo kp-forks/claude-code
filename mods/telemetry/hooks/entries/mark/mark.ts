@@ -1,5 +1,4 @@
-import type { TelemetryMarkKind } from 'claude-code'
-
+import type { TelemetryMarkKind } from '../../../types'
 import type { Fields } from '../fields'
 
 /**

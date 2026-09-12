@@ -81,20 +81,21 @@ rendered, as a click in the terminal does.
 ## Composing mods: noun contracts
 
 A mod that adds a noun to `$` in the `engine.create` fold owns that noun's
-types, and keeps them in one place: its `types/index.d.ts`, an ambient file
-with no imports that merges into `claude-code`, declaring the noun on
-`EngineInterface` and exporting the types it is made of, each named for the
-noun (`telemetry/types/index.d.ts` declares `$.telemetry` and exports
-`Telemetry`, `TelemetryLogEntry`, `TelemetryMarkEntry` and the rest).
+types, and keeps them in one place: its `types/index.d.ts`, a declaration
+file with no imports that exports the types the noun is made of, each named
+for the noun, and declares the noun on `EngineInterface` in `claude-code`
+(`telemetry/types/index.d.ts` exports `Telemetry`, `TelemetryLogEntry`,
+`TelemetryMarkEntry` and the rest, and declares `$.telemetry`).
 
 - The contract is the only declaration of the noun. The mod's own hooks
-  import its types from `claude-code` (`import type { Telemetry } from
-  'claude-code'`), and the value its `engine.create` hook returns is checked
+  import its types from the folder (`import type { Telemetry } from
+  '../types'`), and the value its `engine.create` hook returns is checked
   against `EngineInterface['telemetry']`, so the implementation cannot drift
   from what callers read.
 - A mod that calls another's noun reads the same file and never copies it:
   `mods/tsconfig.json` includes `*/types/**/*.d.ts`, so `$.telemetry.log(…)`
-  in `diff` types against `telemetry`'s contract as it stands.
+  in `diff` types against `telemetry`'s contract as it stands, and a helper
+  that must name one of its types imports it from that folder by path.
 - A test of a mod that calls another's noun seats a provider for it, an inline
   plugin whose `engine.create` hook adds the noun, and answers the calls the
   way it answers the engine's: `on('telemetry.log', ($, e) => ({ value:
