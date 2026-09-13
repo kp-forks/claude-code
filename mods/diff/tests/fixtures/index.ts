@@ -24,6 +24,7 @@ export * from './settle-ms.js'
 export * from './starts-session.js'
 export * from './text-of.js'
 export * from './two-files.js'
+export * from './wheel-over-list.js'
 export * from './wheel-tick.js'
 
 export * as default from '.'

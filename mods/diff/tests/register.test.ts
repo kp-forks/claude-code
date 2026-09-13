@@ -148,15 +148,14 @@ describe('register', () => {
 
     expect(await $.command.run(Fixtures.DIALOG_DIFF)).toEqual({})
 
-    expect(world.opened).toEqual([
-      {
-        id: 'diff',
-        title: 'Diff',
-        holdToasts: true,
-        focus: true,
-        closeOnEscape: true,
-      },
-    ])
+    expect(world.opened[0]).toEqual({
+      id: 'diff',
+      title: 'Diff',
+      holdToasts: true,
+      closeOnEscape: true,
+      rows: expect.any(Number),
+      focus: true,
+    })
 
     expect(await $.command.run(Fixtures.DIALOG_DIFF)).toEqual({
       text: 'Diff dialog dismissed',

@@ -5,8 +5,9 @@ beside the transcript, one row per changed file and every file's hunks
 beneath, and closes it again; each toggle leaves `Diff panel shown` or
 `Diff panel hidden` in the transcript. The header, the file list and its
 toggles stay put while the wheel moves the hunks under them three rows a
-tick (the plugin answers the pane's `ui.scroll` itself); a row's click puts
-that file's hunks at the top; past eight rows the list scrolls under the
+tick, or the list a file a tick while the wheel is over a list longer than
+its eight rows (the plugin answers the pane's `ui.scroll` itself); a row's
+click puts that file's hunks at the top; the list also scrolls under the
 built-in's list keys (`ctrl+up`/`ctrl+down`, `opt+up`/`opt+down`), and
 `ctrl+x b` moves the comparison base on, as the built-in's chord does: both
 through Buttons that declare the engine's own actions. The pane refreshes
@@ -19,9 +20,11 @@ where the terminal is wide enough (144 columns when the person never chose,
 Under the fullscreen layout a terminal under 110 columns gets the
 built-in's line asking for a wider one and nothing opens. Without that
 layout (`CLAUDE_CODE_NO_FLICKER=0`, which `/diff` learns from the command's
-`presentation`) the pane opens inline at any width, focused, in the
-built-in dialog's shape: the title, the count, the file rows, the key
-hints; the arrows walk the rows, Enter shows that file's hunks alone,
+`presentation`) the pane opens inline at any width, focused and as tall
+as its content (the open's `rows`), in the built-in dialog's shape: the
+title, the count, five file rows at a time between `more files` rows that
+page them, the key hints; the arrows walk the rows, Enter shows that
+file's hunks alone,
 Escape backs out to the list and then closes, leaving `Diff dialog
 dismissed`; toasts are held while it is up. A file's ask button arms that
 file: its hunks ride the next prompt as context, once.
@@ -48,7 +51,7 @@ asked for; a rename lists as git prints it. Outside a git repository
 | `ui.render` of `Pane` | Draws the pane: docked, the header, base line, source picker, file list and toggles over the window of hunks; inline, the dialog. |
 | `command.run` of `diff` | Opens or closes the pane (focused and closing on Escape without the fullscreen layout), says which, and remembers the choice. |
 | `ui.close` of the pane | Backs out of the dialog's detail view instead of closing; else remembers the person's close as `/diff`'s. |
-| `ui.scroll` of the pane | Docked, moves the hunks under the pinned header and list (three rows a wheel tick, a page a page key) and keeps the engine's window still. |
+| `ui.scroll` of the pane | Docked, moves the hunks under the pinned header and list (three rows a wheel tick, a page a page key), or the list when the wheel is over it, and keeps the engine's window still. |
 | `command.run` of `clear`, `resume` | Closes the pane and forgets the session's state. |
 | `tool.call` of `Edit`, `Write`, `NotebookEdit` | After the edit, refreshes an open pane; the session's first successful edit opens it. |
 | `tool.call` of `Bash`, `PowerShell` | After the command, refreshes an open pane. |

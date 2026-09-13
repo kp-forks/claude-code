@@ -66,6 +66,24 @@ describe('views', () => {
 
     expect(after).toContain('-const v = 0')
     expect(after).toContain('10 files changed +10 -10')
+    expect(after, 'the list stays').not.toContain('more above')
+  })
+
+  test('docked, the wheel over a long list moves the list', async ($, on) => {
+    const world = Fixtures.inRepository(on, Fixtures.MANY_FILES)
+
+    await $.session.start(Fixtures.SESSION)
+    await $.command.run(Fixtures.DIFF)
+    await world.clock.advance(Fixtures.SETTLE_MS)
+    await $.ui.render(Fixtures.PANE)
+
+    expect(await $.ui.scroll(Fixtures.WHEEL_OVER_LIST)).toEqual({})
+
+    const after = Fixtures.textOf(await $.ui.render(Fixtures.PANE))
+
+    expect(after).toContain('\u2191 1 more above')
+    expect(after).toContain('file8.ts')
+    expect(after.split('file0.ts'), 'the body stays').toHaveLength(2)
   })
 
   test('past eight files the docked list scrolls by key', async ($, on) => {
@@ -129,6 +147,14 @@ describe('views', () => {
     expect(drawn).toContain(
       '\u2191/\u2193 to select \u00b7 Enter to view \u00b7 Esc to close',
     )
+
+    expect(world.opened.at(-1), 'sized to its rows once listed').toEqual({
+      id: 'diff',
+      title: 'Diff',
+      holdToasts: true,
+      closeOnEscape: true,
+      rows: 8,
+    })
   })
 
   test('narrow under the fullscreen layout, the resize line', async ($, on) => {
