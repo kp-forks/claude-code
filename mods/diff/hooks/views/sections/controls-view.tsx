@@ -5,6 +5,7 @@ import type { RenderElement } from 'claude-code'
 
 import PaneState from '../../pane-state'
 import type { Kit } from '../kit'
+import Layout from '../layout'
 import { present } from './present'
 
 /**
@@ -54,7 +55,7 @@ export function controlsView(
       label="base"
       options={model.baseModes.map(mode => ({
         value: mode,
-        label: PaneState.modeLabelOf(mode, model),
+        label: Layout.sanitizeName(PaneState.modeLabelOf(mode, model)),
       }))}
       value={model.requestedMode}
       onSelect={value => kit.actions.chooseBase(value)}
