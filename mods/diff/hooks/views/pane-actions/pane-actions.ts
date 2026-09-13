@@ -10,8 +10,7 @@ export type PaneActions = {
   selectFile: (path: string) => void
 
   /**
-   * Moves the list's window by so many files, clamped to the list; in the
-   * dialog the pick is dropped so the window leaves the file last viewed.
+   * Moves the docked list's window by so many files, clamped to the list.
    */
   scrollList: (delta: number) => void
 

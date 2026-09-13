@@ -7,12 +7,12 @@ import type { Kit } from '../../kit'
 import type { KeyedPressable } from '../keyed-pressable'
 
 /**
- * One row of a file list: a plain Button under its key, then whatever the
- * row shows at its right edge (its counts, a note).
+ * One list row: a plain Button as wide as its label, a spacer, then the
+ * tail at the right edge (the counts, or a note).
  *
  * @param kit the elements
- * @param row the Button's key, label and press, and whether it rests dim
- * @param tail the element at the right edge
+ * @param row the Button's key, label, press, rest style and ring start
+ * @param tail what sits at the row's right edge
  * @returns the row element
  */
 export function listRow(
@@ -24,7 +24,13 @@ export function listRow(
 
   return (
     <Box flexDirection="row">
-      <Button key={row.key} plain dimColor={row.isDim} onPress={row.onPress}>
+      <Button
+        key={row.key}
+        plain
+        dimColor={row.isDim}
+        {...(row.isAutoFocus ? ({ autoFocus: true } as const) : {})}
+        onPress={row.onPress}
+      >
         {row.label}
       </Button>
       <Box flexGrow={1} />

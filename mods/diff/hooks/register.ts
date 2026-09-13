@@ -467,13 +467,7 @@ export function register(on: On) {
       redraw(engine)
     },
     scrollList: delta => {
-      const place = Views.listScrolledBy(model, delta)
-      const isDocked = model.placement === 'dock'
-
-      model = isDocked
-        ? { ...model, place }
-        : { ...model, place, selectedPath: null }
-
+      model = { ...model, place: Views.listScrolledBy(model, delta) }
       redraw(engine)
     },
     toggleNoise: () => {
@@ -727,6 +721,23 @@ export function register(on: On) {
     }
 
     return result
+  })
+
+  on('ui.focus', { plugin: Names.PLUGIN_NAME }, ($, e, next) => {
+    const isListed =
+      model.placement === 'inline' && model.dialogView === 'list' && host
+
+    const focus = isListed ? Views.dialogFocusOf(model, e.element) : null
+
+    if (!focus || !host) {
+      return next(e)
+    }
+
+    model = { ...model, selectedPath: focus.selectedPath }
+    fitDialog(host)
+    host.invalidate()
+
+    return next({ ...e, element: focus.landing })
   })
 
   on('ui.scroll', { requestId: Names.PANE_ID }, ($, e, next) => {

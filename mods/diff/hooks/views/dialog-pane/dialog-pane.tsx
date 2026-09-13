@@ -18,9 +18,9 @@ import { dialogWindowOf } from './dialog-window-of'
  * The inline pane (DiffDialog): its title, the dim count, then the file
  * list's window, or the picked file's detail alone, and the key hints.
  *
- * Every file lists in the built-in's order, five at a time between `more
- * files` rows that move the window; the source picker stands in for the
- * tabs. Arrows walk the rows, Enter views one, Escape backs out or closes.
+ * Every file lists in the built-in's order, five at a time round the
+ * selected row (`❯ `, where the focus ring starts and what its walk moves,
+ * ui.focus); Enter views that file, Escape backs out or closes.
  *
  * @param kit the elements, the handlers, the width
  * @param model the pane's state
@@ -44,6 +44,7 @@ export function dialogPane(
   const isTurn = model.source.kind === 'turn'
   const isPaged = entries.length > Limits.MAX_VISIBLE_FILES
   const picked = entries.find(entry => entry.path === model.selectedPath)
+  const selected = picked ?? entries[0]
   const isDetail = model.dialogView === 'detail' && picked !== undefined
 
   const start = dialogWindowOf(
@@ -89,7 +90,7 @@ export function dialogPane(
         added: entry.added,
         removed: entry.removed,
         note: noteOf(entry),
-        isSelected: false,
+        isSelected: entry === selected,
       },
       () => kit.actions.selectFile(entry.path),
     )
@@ -97,9 +98,8 @@ export function dialogPane(
   function moreOf(way: 'up' | 'down', count: number): RenderElement {
     const arrow = way === 'up' ? '\u2191' : '\u2193'
     const words = Layout.plural(count, 'file').replace(' ', ' more ')
-    const edge = way === 'up' ? 'files-up' : 'files-down'
 
-    return Sections.listEdgeButton(kit, edge, ` ${arrow} ${words}`)
+    return Sections.dimNote(kit, ` ${arrow} ${words}`)
   }
 
   const pagedEdgeOf = (way: 'up' | 'down', count: number) =>

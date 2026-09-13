@@ -14,7 +14,7 @@ import { POINTER } from '../pointer'
 
 /**
  * One file of the inline list (DiffFileList FileItem): the pointer before
- * the selected one, the start-truncated name, its counts or note right.
+ * the selected one, where the focus ring starts, the name, counts or note.
  *
  * @param kit the elements, the handlers, the width
  * @param row the file
@@ -42,7 +42,13 @@ export function dialogFileRow(
 
   return listRow(
     kit,
-    { key: row.key, label: `${mark} ${name}`, onPress, isDim: false },
+    {
+      key: row.key,
+      label: `${mark} ${name}`,
+      onPress,
+      isDim: false,
+      isAutoFocus: row.isSelected,
+    },
     tail,
   )
 }
