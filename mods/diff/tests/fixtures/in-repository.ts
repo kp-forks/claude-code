@@ -4,6 +4,7 @@ import { mock } from 'claude-code/testing'
 import { gitIn } from './git-in.js'
 import { HINT_DRAWN } from './hint-drawn.js'
 import { keeping } from './keeping.js'
+import { REPOSITORY } from './repository.js'
 import { startsSession } from './starts-session.js'
 
 /**
@@ -13,9 +14,13 @@ import { startsSession } from './starts-session.js'
  * The store starts empty, the clock at 0, and the engine draws the hint.
  *
  * @param on the test's `on`
+ * @param answers git's output by invocation key; one changed file when absent
  * @returns the runs, the panes opened and closed, and the session's clock
  */
-export function inRepository(on: On) {
+export function inRepository(
+  on: On,
+  answers: Readonly<Record<string, string>> = REPOSITORY,
+) {
   const runs: Args<'process.run'>[] = []
   const opened = keeping<Args<'ui.open'>>()
   const closed = keeping<Args<'ui.close'>>()
@@ -24,7 +29,7 @@ export function inRepository(on: On) {
   on('process.run', ($, e) => {
     runs.push(e)
 
-    return { value: gitIn(e.argv) }
+    return { value: gitIn(e.argv, answers) }
   })
 
   on('ui.open', opened.hook)

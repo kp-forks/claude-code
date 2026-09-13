@@ -120,13 +120,16 @@ describe('register', () => {
     ])
   })
 
-  test('/diff opens the pane over the session changes', async ($, on) => {
+  test('/diff opens the pane, unfocused, and says so', async ($, on) => {
     const world = Fixtures.inRepository(on)
 
     await $.session.start(Fixtures.SESSION)
 
-    expect(await $.command.run(Fixtures.DIFF)).toEqual({})
-    expect(world.opened.map(pane => pane.id)).toEqual(['diff'])
+    expect(await $.command.run(Fixtures.DIFF)).toEqual({
+      text: 'Diff panel shown',
+    })
+
+    expect(world.opened).toEqual([{ id: 'diff', title: 'Diff' }])
 
     await world.clock.advance(Fixtures.SETTLE_MS)
 
@@ -136,23 +139,17 @@ describe('register', () => {
     expect(drawn).toContain('app.ts')
   })
 
-  test('the close button closes the pane; /diff reopens it', async ($, on) => {
+  test('/diff again closes the pane and says so', async ($, on) => {
     const world = Fixtures.inRepository(on)
 
     await $.session.start(Fixtures.SESSION)
     await $.command.run(Fixtures.DIFF)
-    await world.clock.advance(Fixtures.SETTLE_MS)
-    await $.ui.render(Fixtures.PANE)
 
-    expect(await $.ui.press({ plugin: 'diff', key: 'close' })).toEqual({
-      element: 'close',
+    expect(await $.command.run(Fixtures.DIFF)).toEqual({
+      text: 'Diff panel hidden',
     })
 
-    await world.clock.settle()
-
     expect(world.closed.map(pane => pane.id)).toEqual(['diff'])
-    expect(await $.command.run(Fixtures.DIFF)).toEqual({})
-    expect(world.opened.map(pane => pane.id)).toEqual(['diff', 'diff'])
   })
 
   test('a wide terminal opens the pane at the first edit', async ($, on) => {
