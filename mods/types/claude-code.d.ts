@@ -677,6 +677,15 @@ declare module 'claude-code' {
        */
       dimColor?: boolean;
       /**
+       * The site's focus ring starts here when the site takes the keyboard,
+       * instead of on nothing, as the DOM's `autofocus`: Enter acts on it at once.
+       *
+       * A pane opened with `focus`, or the person's focus chord or click, is the
+       * take. Of several in one site the first drawn wins; it raises `ui.focus`,
+       * origin this plugin. A ring the person has moved stays where it was put.
+       */
+      autoFocus?: true;
+      /**
        * Label style overrides (the `Text` set) applied by the surface while the
        * nearest enclosing keyed `Box`, or given a `scope` its group, is hovered.
        *
@@ -1810,7 +1819,7 @@ declare module 'claude-code' {
       };
       /**
        * Display: a line under an open dialog, a redraw or a repaint, a
-       * transcript line, a pane the surface places, a window scrolled.
+       * transcript line, a pane the surface places, a window or a ring moved.
        */
       ui: {
           /**
@@ -1969,6 +1978,21 @@ declare module 'claude-code' {
            * onPress: () => $.ui.scroll({ in: "log", to: "end" })
            */
           scroll: (args: UiScrollArgs) => Promise<UiScrollResult>;
+          /**
+           * Moves the focus ring of one of this plugin's sites onto an element it
+           * drew there, as the DOM's `element.focus()`, while it holds the keys.
+           *
+           * Raised as the event `ui.focus`, origin `plugin`; the engine's inverse
+           * marks the element. The keyboard is the person's to give: a site not
+           * holding it, or holding it on another plugin's element, is `{ deny }`.
+           *
+           * @param args `requestId` (which site: a pane's id, the band's) and `key`
+           *             (the element's, as drawn)
+           * @returns `{}` once it moved, or `{ deny }` saying why not
+           * @example
+           * onPress: () => $.ui.focus({ requestId: "files", key: "row:0" })
+           */
+          focus: (args: UiFocusArgs) => Promise<UiFocusResult>;
       };
       /**
        * Completions through the session's own client and credentials.
@@ -2887,6 +2911,18 @@ declare module 'claude-code' {
        */
       'ui.scroll': UiScrollInput;
       /**
+       * Fires before a site's focus ring moves: the person's Tab, arrows or click
+       * in a `Pane` or the band; an `autoFocus` element taking it; `$.ui.focus`.
+       *
+       * `next(e)` lands it on `e.element` (absent: one of the engine's stops) and
+       * draws: `{}`; `next({ ...e, element })` on another of `e.plugin`'s; no
+       * `next` (`{}` or `{ deny }`) keeps it where it was, drawn as it was.
+       *
+       * @example
+       * on("ui.focus", { requestId: "list" }, ($, e, next) => (mark(e), next(e)))
+       */
+      'ui.focus': UiFocusInput;
+      /**
        * Fires when the engine offers an agent type to the model, in the agent
        * listing and again at dispatch; `next(e)` resolves to `{ isOffered: true }`.
        *
@@ -3214,6 +3250,10 @@ declare module 'claude-code' {
        */
       'ui.scroll': UiScrollResult;
       /**
+       * `{}` once the ring moved, or `{ deny }`.
+       */
+      'ui.focus': UiFocusResult;
+      /**
        * `{ isOffered }`.
        */
       'agent.offer': AgentOfferResult;
@@ -3367,6 +3407,7 @@ declare module 'claude-code' {
           render: <C extends RenderComponent>(input: RenderInput<C>) => Promise<RenderElement>;
           resolve: <E extends ResolveInput>(e: E) => Elements[E['surface']];
           scroll: (input: UiScrollArgs) => Promise<UiScrollResult>;
+          focus: (input: UiFocusArgs) => Promise<UiFocusResult>;
       };
   };
 
@@ -3703,6 +3744,15 @@ declare module 'claude-code' {
        * focus (`send`). Defaults to `submit`.
        */
       submitLabel?: string;
+      /**
+       * The site's focus ring starts here when the site takes the keyboard,
+       * instead of on nothing, as the DOM's `autofocus`: Enter acts on it at once.
+       *
+       * A pane opened with `focus`, or the person's focus chord or click, is the
+       * take. Of several in one site the first drawn wins; it raises `ui.focus`,
+       * origin this plugin. A ring the person has moved stays where it was put.
+       */
+      autoFocus?: true;
       /**
        * Runs on every change of the text, in the plugin's own environment: the
        * bottom of a `ui.input` chain of kind `change`.
@@ -4822,6 +4872,10 @@ declare module 'claude-code' {
   /**
    * The argument of `$.ui.open`: which pane, its title, whether it asks the
    * person's keyboard, its dialog manners, and the rows it wants inline.
+   *
+   * An open answering the person's input (a command or prompt they entered, a
+   * press) is placed at any width; one the plugin makes on its own waits
+   * undrawn below 144 terminal columns, 110 once they asked for that id.
    */
   export type PaneOpenArgs = {
       /**
@@ -5921,6 +5975,11 @@ declare module 'claude-code' {
            * under the pointer or the focus; absent draws as false.
            */
           dimColor?: TextProps['dimColor'];
+          /**
+           * The site's ring starts on this element when the site takes the
+           * keyboard; the first drawn of several. Absent draws as before.
+           */
+          autoFocus?: true;
       };
       /**
        * Where the handler lives: the plugin whose hook drew the element, and
@@ -5969,6 +6028,11 @@ declare module 'claude-code' {
            * What Enter does, drawn beside the field while it has focus.
            */
           submitLabel?: string;
+          /**
+           * The site's ring starts on this element when the site takes the
+           * keyboard; the first drawn of several. Absent draws as before.
+           */
+          autoFocus?: true;
       };
       /**
        * Where the handlers live: the plugin whose hook drew the element, and
@@ -6010,6 +6074,11 @@ declare module 'claude-code' {
            * Which option is selected when drawn.
            */
           value?: string;
+          /**
+           * The site's ring starts on this element when the site takes the
+           * keyboard; the first drawn of several. Absent draws as before.
+           */
+          autoFocus?: true;
       };
       /**
        * Where the handler lives: the plugin whose hook drew the element, and
@@ -6678,6 +6747,15 @@ declare module 'claude-code' {
        * until the hook draws another.
        */
       value?: string;
+      /**
+       * The site's focus ring starts here when the site takes the keyboard,
+       * instead of on nothing, as the DOM's `autofocus`: Enter acts on it at once.
+       *
+       * A pane opened with `focus`, or the person's focus chord or click, is the
+       * take. Of several in one site the first drawn wins; it raises `ui.focus`,
+       * origin this plugin. A ring the person has moved stays where it was put.
+       */
+      autoFocus?: true;
       /**
        * Runs on a pick with the option's value, in the plugin's own environment:
        * the bottom of a `ui.select` chain. No model turn unless it asks one.
@@ -8645,6 +8723,112 @@ declare module 'claude-code' {
        *
        * Another plugin's Raster under the same site and key reads as not this
        * plugin's; a cell that does not decode is named by its index.
+       */
+      deny?: string;
+  };
+
+  /**
+   * What a plugin's `$.ui.focus(args)` takes: one of its own elements, by the
+   * `key` it drew it under, in one of its sites that holds the keyboard now.
+   *
+   * The engine resolves it to that site's ring and raises `ui.focus` under
+   * the plugin's origin; the keyboard is the person's to give, so a site that
+   * does not hold it, or holds it on another plugin's element, is `{ deny }`.
+   */
+  export type UiFocusArgs = {
+      /**
+       * The site, by the `requestId` this plugin draws it under: one of its
+       * panes' ids, or the band's.
+       */
+      requestId: string;
+      /**
+       * The element's `key`: a `Button`, `Input` or `Select` this plugin drew in
+       * that site; of several under one key, the first in document order.
+       */
+      key: string;
+  };
+
+  /**
+   * The render components whose site keeps a focus ring: a pane's body and
+   * the band above the prompt, each a ring over the elements hooks drew there.
+   */
+  export type UiFocusComponent = 'Pane' | 'AbovePrompt';
+
+  /**
+   * The input of `ui.focus`: a site's focus ring about to move onto one of the
+   * elements a hook drew in it (a `Button`, `Input` or `Select`), or off them.
+   *
+   * Every key but `element` is the engine's word, pinned: `next(e)` passes
+   * them on, a rewrite that leaves one out keeps it, one that changes it fails
+   * the hook. `element` is the hook's to rewrite; the ring has not moved yet.
+   */
+  export type UiFocusInput = {
+      /**
+       * Which site: a `Pane` body or the `AbovePrompt` band.
+       */
+      component: UiFocusComponent;
+      /**
+       * The instance the `ui.render` hook drawing the site sees: the pane's id,
+       * or the band's one id.
+       */
+      requestId: string;
+      /**
+       * Whose `ui.render` hook drew the element taking the ring; absent with
+       * `element`. Read-only.
+       */
+      plugin?: string;
+      /**
+       * The `key` of the element taking the ring, as `ui.press` names it; absent
+       * for one of the engine's own stops (a pane's close mark or another's tab).
+       *
+       * `next({ ...e, element })` lands it on another element `plugin` drew in
+       * the site instead; one not drawn there is core's `{ deny }`.
+       */
+      element?: string;
+      /**
+       * Who moves it (UiFocusOrigin), set by the engine where the move starts.
+       */
+      origin: UiFocusOrigin;
+  };
+
+  /**
+   * Who moves the ring at `ui.focus`, as the engine stamps it where the move
+   * starts; a closed set a matcher narrows on.
+   *
+   * `next(e)` passes it on as received; no hook sets one.
+   */
+  export type UiFocusOrigin = {
+      /**
+       * The person, by Tab, the arrows or a click while the site holds the
+       * keyboard.
+       */
+      kind: 'person';
+  } | {
+      /**
+       * A plugin's `$.ui.focus`, or its `autoFocus` element taking the ring
+       * as the site takes the keyboard.
+       */
+      kind: 'plugin';
+      /**
+       * The focusing plugin's name.
+       */
+      name: string;
+  };
+
+  /**
+   * What a `ui.focus` hook returns, what `next(e)` resolves to, and what
+   * `$.ui.focus` hands back: `{}` once the ring moved, or why it did not.
+   *
+   * As `ui.scroll` spells it.
+   */
+  export type UiFocusResult = {
+      /**
+       * Absent when the ring is where the chain left it; else why nothing
+       * moved.
+       *
+       * A hook kept the ring (no `next`); the site is not this plugin's, does
+       * not hold the keyboard, or another plugin's element holds it; no element
+       * of `plugin` is drawn under `element`; another move landed first.
        */
       deny?: string;
   };
