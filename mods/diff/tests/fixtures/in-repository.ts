@@ -22,6 +22,7 @@ export function inRepository(
   answers: Readonly<Record<string, string>> = REPOSITORY,
 ) {
   const runs: Args<'process.run'>[] = []
+  const focused: Args<'ui.focus'>[] = []
   const opened = keeping<Args<'ui.open'>>()
   const closed = keeping<Args<'ui.close'>>()
   const clock = startsSession(on)
@@ -32,6 +33,12 @@ export function inRepository(
     return { value: gitIn(e.argv, answers) }
   })
 
+  on('ui.focus', (_engine, e) => {
+    focused.push(e)
+
+    return {}
+  })
+
   on('ui.open', opened.hook)
   on('ui.close', closed.hook)
   on('ui.invalidate', () => ({ value: undefined }))
@@ -39,5 +46,5 @@ export function inRepository(
   on('session.messages', () => ({ value: [] }))
   mock.store(on)
 
-  return { runs, opened: opened.kept, closed: closed.kept, clock }
+  return { runs, focused, opened: opened.kept, closed: closed.kept, clock }
 }

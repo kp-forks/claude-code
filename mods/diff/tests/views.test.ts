@@ -140,7 +140,7 @@ describe('views', () => {
 
     expect(drawn).toContain('Uncommitted changes (git diff HEAD)')
     expect(drawn).toContain('2 files changed +3 -1')
-    expect(drawn).toContain('  app.ts')
+    expect(drawn).toContain('\u276f app.ts')
     expect(drawn).toContain('  lib.ts')
     expect(drawn).not.toContain('+const a = 2')
 
@@ -171,7 +171,7 @@ describe('views', () => {
     )
   })
 
-  test('off fullscreen, forty files list five at a time', async ($, on) => {
+  test('off fullscreen, the window follows the walk', async ($, on) => {
     const world = Fixtures.inRepository(on, Fixtures.MANY_FILES)
 
     await $.session.start(Fixtures.SESSION)
@@ -180,19 +180,24 @@ describe('views', () => {
 
     const drawn = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
 
+    expect(drawn).toContain('\u276f file0.ts')
     expect(drawn).toContain('  file4.ts')
     expect(drawn).not.toContain('file5.ts')
     expect(drawn).toContain(' \u2193 5 more files')
+    expect(await $.ui.focus(Fixtures.ringOnto('file:file3.ts'))).toEqual({})
 
-    expect(await $.ui.press({ plugin: 'diff', key: 'files-down' })).toEqual({
-      element: 'files-down',
-    })
+    expect(
+      world.focused.map(focus => focus.element),
+      'its row once centred',
+    ).toEqual(['file:file2.ts'])
 
-    const paged = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
+    const walked = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
 
-    expect(paged).toContain(' \u2191 5 more files')
-    expect(paged).toContain('  file9.ts')
-    expect(paged).not.toContain('file4.ts')
+    expect(walked).toContain(' \u2191 1 more file')
+    expect(walked).toContain('\u276f file3.ts')
+    expect(walked).toContain('  file5.ts')
+    expect(walked).toContain(' \u2193 4 more files')
+    expect(walked).not.toContain('file0.ts')
   })
 
   test('off fullscreen, the dialog draws at any width', async ($, on) => {

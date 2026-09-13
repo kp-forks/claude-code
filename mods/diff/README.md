@@ -22,9 +22,10 @@ built-in's line asking for a wider one and nothing opens. Without that
 layout (`CLAUDE_CODE_NO_FLICKER=0`, which `/diff` learns from the command's
 `presentation`) the pane opens inline at any width, focused and as tall
 as its content (the open's `rows`), in the built-in dialog's shape: the
-title, the count, five file rows at a time between `more files` rows that
-page them, the key hints; the arrows walk the rows, Enter shows that
-file's hunks alone,
+title, the count, five file rows at a time round the selected one (`❯`,
+where the focus ring starts; the plugin follows the ring's walk through
+`ui.focus` and re-centres the rows as the built-in does), the key hints;
+Enter shows that file's hunks alone,
 Escape backs out to the list and then closes, leaving `Diff dialog
 dismissed`; toasts are held while it is up. A file's ask button arms that
 file: its hunks ride the next prompt as context, once.
@@ -52,6 +53,7 @@ asked for; a rename lists as git prints it. Outside a git repository
 | `command.run` of `diff` | Opens or closes the pane (focused and closing on Escape without the fullscreen layout), says which, and remembers the choice. |
 | `ui.close` of the pane | Backs out of the dialog's detail view instead of closing; else remembers the person's close as `/diff`'s. |
 | `ui.scroll` of the pane | Docked, moves the hunks under the pinned header and list (three rows a wheel tick, a page a page key), or the list when the wheel is over it, and keeps the engine's window still. |
+| `ui.focus` in the pane | In the dialog's list, selects the file the ring lands on, re-centres the five rows on it, and lands the ring where that row now sits. |
 | `command.run` of `clear`, `resume` | Closes the pane and forgets the session's state. |
 | `tool.call` of `Edit`, `Write`, `NotebookEdit` | After the edit, refreshes an open pane; the session's first successful edit opens it. |
 | `tool.call` of `Bash`, `PowerShell` | After the command, refreshes an open pane. |
