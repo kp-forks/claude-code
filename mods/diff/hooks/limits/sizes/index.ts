@@ -4,6 +4,7 @@ export * from './max-files-for-details.js'
 export * from './max-lines-per-file.js'
 export * from './max-listed-directories.js'
 export * from './max-untracked-probes.js'
+export * from './max-visible-files.js'
 export * from './pane'
 export * from './prompt-context-max-chars.js'
 

@@ -12,55 +12,33 @@ import { placeholderOf } from './placeholder-of'
 import type Types from './types'
 
 /**
- * One file's detail (DiffDetailView): its bold name and aside, the ask
- * Button, the built-in's dim rule under them, the body.
+ * One file's detail (DiffDetailView): its name row (nameRow), the
+ * built-in's dim rule under it, the body.
  *
- * The name is cut from its start to the width. The body is a placeholder,
- * or the hunks as the engine's diff `Code` blocks (codeBlocksOf) within the
- * room given, then a footer when anything was cut; the room left over.
+ * The body is a placeholder, or the hunks as the engine's diff `Code`
+ * blocks (codeBlocksOf) within the room given, then a footer when anything
+ * was cut; with it, the room left over.
  *
  * @param kit the elements and the width
  * @param detail the file
- * @param draw the room the bodies have left, and the ask's press
+ * @param room the room the pane's bodies have left
  * @returns the detail element and the room after it
  */
 export function detailView(
   kit: Kit,
   detail: DetailModel,
-  draw: Types.DetailDraw,
+  room: Types.BodyRoom,
 ): Types.DrawnDetail {
-  const { Box, Text, Button, Code } = kit.ui
-  const { room, onToggleAsk } = draw
+  const { Box, Text, Code } = kit.ui
   const placeholder = placeholderOf(detail)
-  const name = Layout.sanitizeName(detail.displayPath)
 
-  const framed: Types.BodyRoom = {
-    chars: room.chars - name.length,
+  const code = codeBlocksOf(placeholder ? [] : (detail.body?.hunks ?? []), {
+    chars: room.chars - Layout.sanitizeName(detail.displayPath).length,
     nodes: room.nodes - FILE_FRAME_NODES,
-  }
-
-  const code = codeBlocksOf(
-    placeholder ? [] : (detail.body?.hunks ?? []),
-    framed,
-  )
+  })
 
   const isTruncated = detail.body?.isTruncated === true || code.isTruncated
   const path = Layout.sanitizeName(detail.path).slice(-MAX_CODE_CHARS)
-
-  const asides = [
-    detail.isUntracked ? 'untracked' : null,
-    isTruncated ? 'truncated' : null,
-  ].filter(word => word !== null)
-
-  const aside = asides.length === 0 ? '' : ` (${asides.join(', ')})`
-
-  const ask = placeholder
-    ? []
-    : [
-        <Button key={Sections.askKeyOf(detail.path)} onPress={onToggleAsk}>
-          {detail.isArmed ? 'asked ✓' : 'ask'}
-        </Button>,
-      ]
 
   const footer = isTruncated
     ? [
@@ -83,16 +61,11 @@ export function detailView(
   const element = (
     <Box flexDirection="column">
       {[
-        <Box flexDirection="row">
-          {[
-            <Text bold wrap="truncate-start">
-              {Layout.truncateStart(name, kit.columns)}
-            </Text>,
-            <Text dimColor>{aside}</Text>,
-            <Box flexGrow={1} />,
-            ...ask,
-          ]}
-        </Box>,
+        Sections.nameRow(kit, {
+          ...detail,
+          isTruncated,
+          isAskable: placeholder === null,
+        }),
         Sections.divider(kit),
         ...(placeholder ? notes : hunks),
         ...footer,

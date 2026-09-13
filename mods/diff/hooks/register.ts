@@ -343,8 +343,22 @@ export function register(on: On) {
     engine: Host,
     trigger: (typeof Record.SHOWN_TRIGGERS)[number],
   ): Promise<void> {
-    model = { ...model, selectedPath: null }
-    await engine.openPane({ id: Names.PANE_ID, title: Names.PANE_TITLE })
+    const isDialog = model.isFullscreen === false
+
+    model = {
+      ...model,
+      selectedPath: null,
+      dialogView: 'list',
+      place: { ...model.place, top: 0, listStart: 0 },
+    }
+
+    await engine.openPane({
+      id: Names.PANE_ID,
+      title: Names.PANE_TITLE,
+      holdToasts: true,
+      ...(isDialog ? ({ focus: true, closeOnEscape: true } as const) : {}),
+    })
+
     isPaneOpen = true
 
     const sessionId = await engine.sessionId().catch(() => null)
@@ -388,6 +402,7 @@ export function register(on: On) {
 
     const isEligible =
       preference !== false &&
+      model.isFullscreen !== false &&
       columns !== null &&
       columns >= floor &&
       backend !== null
@@ -408,11 +423,24 @@ export function register(on: On) {
 
   const actionsOf = (engine: Host): Views.PaneActions => ({
     selectFile: path => {
-      model = { ...model, selectedPath: path }
+      const isDocked = model.placement === 'dock'
 
-      if (model.placement === 'dock') {
-        void engine.scrollTo(Views.bodyKeyOf(path)).catch(() => undefined)
+      model = {
+        ...model,
+        selectedPath: path,
+        dialogView: isDocked ? model.dialogView : 'detail',
+        place: isDocked ? Views.placeAtFile(model, path) : model.place,
       }
+
+      redraw(engine)
+    },
+    scrollList: delta => {
+      const place = Views.listScrolledBy(model, delta)
+      const isDocked = model.placement === 'dock'
+
+      model = isDocked
+        ? { ...model, place }
+        : { ...model, place, selectedPath: null }
 
       redraw(engine)
     },
@@ -426,10 +454,14 @@ export function register(on: On) {
       void loadBodies(engine)
       redraw(engine)
     },
-    chooseBase: value => {
-      const mode = PaneState.baseModeOf(value)
+    cycleBase: () => {
+      const { baseModes, requestedMode } = model
 
-      if (!mode || mode === model.requestedMode) {
+      const mode =
+        baseModes[(baseModes.indexOf(requestedMode) + 1) % baseModes.length] ??
+        requestedMode
+
+      if (mode === requestedMode) {
         return
       }
 
@@ -459,7 +491,7 @@ export function register(on: On) {
         ? { kind: 'turn', index }
         : { kind: 'current' }
 
-      model = { ...model, source, selectedPath: null }
+      model = { ...model, source, selectedPath: null, dialogView: 'list' }
       redraw(engine)
     },
     toggleAsk: path => {
@@ -529,8 +561,6 @@ export function register(on: On) {
       uiLog: text => $.ui.log(text),
       openPane: pane => $.ui.open(pane),
       closePane: pane => $.ui.close(pane),
-      scrollTo: key =>
-        $.ui.scroll({ to: { key }, in: Names.PANE_ID, block: 'start' }),
       registerCommand: spec => $.command.register(spec),
       sessionId: () => $.session.id(),
       mark: entry => $.telemetry.mark(entry),
@@ -556,7 +586,19 @@ export function register(on: On) {
     const { Box, Text, Button, Select, Code } = await $.ui.resolve(e)
 
     columns = e.viewport?.columns ?? columns
-    model = { ...model, placement: e.props.placement }
+
+    model = {
+      ...model,
+      placement: e.props.placement,
+      place: {
+        ...model.place,
+        columns: Math.max(
+          1,
+          e.props.bodyColumns - Limits.PANE_RIGHT_PAD_COLUMNS,
+        ),
+        rows: e.props.scroll.bodyRows,
+      },
+    }
 
     return Views.paneView(
       {
@@ -585,7 +627,15 @@ export function register(on: On) {
       }
     }
 
-    const toggle = PaneToggle.paneToggleOf({ isOpen: isPaneOpen, columns })
+    const { isFullscreen } = e.presentation
+
+    columns = e.presentation.columns
+    model = { ...model, isFullscreen }
+
+    const toggle = PaneToggle.paneToggleOf({
+      isOpen: isPaneOpen,
+      columns: isFullscreen ? columns : null,
+    })
 
     if (toggle === 'too-narrow') {
       return { text: Names.RESIZE_TERMINAL_TEXT }
@@ -593,6 +643,11 @@ export function register(on: On) {
 
     const isOpening = toggle === 'open'
     await (isOpening ? openPane(host, 'manual') : closePane(host))
+
+    if (!isFullscreen) {
+      return isOpening ? {} : { text: Names.DIALOG_DISMISSED_TEXT }
+    }
+
     markTabSwitch(host, isOpening ? 'diff' : 'convo')
     await host.storeSet(Names.STORE_OPEN_KEY, isOpening).catch(() => undefined)
 
@@ -602,6 +657,28 @@ export function register(on: On) {
   })
 
   on('ui.close', { id: Names.PANE_ID }, async ($, e, next) => {
+    const isBack =
+      e.origin.kind === 'person' &&
+      model.placement === 'inline' &&
+      model.dialogView === 'detail'
+
+    if (isBack && host) {
+      model = { ...model, dialogView: 'list' }
+      redraw(host)
+
+      void host
+        .openPane({
+          id: Names.PANE_ID,
+          title: Names.PANE_TITLE,
+          focus: true,
+          closeOnEscape: true,
+          holdToasts: true,
+        })
+        .catch(() => undefined)
+
+      return { deny: 'back to the file list' }
+    }
+
     const result = await next(e)
     const isClosed = result.deny === undefined
     const isPersons = isClosed && e.origin.kind === 'person'
@@ -610,12 +687,31 @@ export function register(on: On) {
       isPaneOpen = false
     }
 
-    if (isPersons && host) {
+    const isDialog = model.isFullscreen === false
+
+    if (isPersons && host && isDialog) {
+      host.uiLog(Names.DIALOG_DISMISSED_TEXT)
+    }
+
+    if (isPersons && host && !isDialog) {
       markTabSwitch(host, 'convo')
       await host.storeSet(Names.STORE_OPEN_KEY, false).catch(() => undefined)
     }
 
     return result
+  })
+
+  on('ui.scroll', { requestId: Names.PANE_ID }, ($, e, next) => {
+    const isOwnBody = e.origin.kind === 'person' && model.placement === 'dock'
+
+    if (!isOwnBody || !host) {
+      return next(e)
+    }
+
+    model = { ...model, place: Views.bodyScrolledBy(model, e) }
+    host.invalidate()
+
+    return {}
   })
 
   on('command.run', { command: ['clear', 'resume'] }, async ($, e, next) => {

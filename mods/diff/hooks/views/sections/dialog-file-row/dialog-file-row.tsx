@@ -40,5 +40,9 @@ export function dialogFileRow(
   const hasNote = row.note !== null
   const tail = hasNote ? note : diffStat(kit, row.added, row.removed)
 
-  return listRow(kit, { key: row.key, label: `${mark} ${name}`, onPress }, tail)
+  return listRow(
+    kit,
+    { key: row.key, label: `${mark} ${name}`, onPress, isDim: false },
+    tail,
+  )
 }

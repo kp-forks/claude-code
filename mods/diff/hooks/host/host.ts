@@ -9,7 +9,6 @@ import type {
   ProcessRunResult,
   SessionMessage,
   TimerCall,
-  UiScrollResult,
 } from 'claude-code'
 
 /**
@@ -94,12 +93,6 @@ export type Host = {
    * `$.ui.close`.
    */
   closePane: (pane: PaneCloseArgs) => Promise<void>
-
-  /**
-   * `$.ui.scroll` to one of the pane's own keyed elements, its top at the
-   * window's top.
-   */
-  scrollTo: (key: string) => Promise<UiScrollResult>
 
   /**
    * `$.command.register`; rejects while another `/diff` is listed.

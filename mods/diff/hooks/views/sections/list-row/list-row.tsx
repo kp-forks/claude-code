@@ -11,7 +11,7 @@ import type { KeyedPressable } from '../keyed-pressable'
  * row shows at its right edge (its counts, a note).
  *
  * @param kit the elements
- * @param row the Button's key, label and press
+ * @param row the Button's key, label and press, and whether it rests dim
  * @param tail the element at the right edge
  * @returns the row element
  */
@@ -24,7 +24,7 @@ export function listRow(
 
   return (
     <Box flexDirection="row">
-      <Button key={row.key} plain onPress={row.onPress}>
+      <Button key={row.key} plain dimColor={row.isDim} onPress={row.onPress}>
         {row.label}
       </Button>
       <Box flexGrow={1} />

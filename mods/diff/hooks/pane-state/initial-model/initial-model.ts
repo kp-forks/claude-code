@@ -23,4 +23,7 @@ export const INITIAL_MODEL: PaneModel = Object.freeze({
   todos: Object.freeze({ done: 0, total: 0 }),
   armedPath: null,
   placement: 'dock',
+  isFullscreen: null,
+  dialogView: 'list',
+  place: Object.freeze({ top: 0, listStart: 0, columns: 0, rows: 0 }),
 })

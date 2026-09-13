@@ -5,22 +5,21 @@ import type { RenderElement } from 'claude-code'
 
 import Limits from '../limits'
 import Names from '../names'
-import PaneState from '../pane-state'
-import { currentPane } from './current-pane'
+import type PaneState from '../pane-state'
+import { dialogPane } from './dialog-pane'
 import { insetOf } from './inset-of'
 import type { Kit } from './kit'
 import type { PaneSeat } from './pane-seat'
 import Sections from './sections'
 import { sidebarPane } from './sidebar-pane'
-import { turnPane } from './turn-pane'
 
 /**
  * The diff pane's body for one `ui.render`: docked, the built-in panel's
  * layout (sidebarPane); inline, its dialog's, or its wider-terminal line.
  *
- * Inline for want of width (under OPEN_MIN_COLUMNS) the built-in shows no
- * panel, only that line; inline on a wider terminal there is no fullscreen
- * layout, where it shows its dialog. Docked, its blank top row and column.
+ * The line only where the session is fullscreen (or not known not to be)
+ * and the terminal too narrow to dock, as the built-in shows no panel
+ * there; without the fullscreen layout the dialog draws at any width.
  *
  * @param kit the elements, the handlers, the width
  * @param model the pane's state
@@ -36,14 +35,9 @@ export function paneView(
   const isDocked = seat.placement === 'dock'
 
   const isNarrow =
+    model.isFullscreen !== false &&
     seat.terminalColumns !== null &&
     seat.terminalColumns < Limits.OPEN_MIN_COLUMNS
-
-  function dialogOf(): RenderElement {
-    const turn = PaneState.pickedTurnOf(model)
-
-    return turn ? turnPane(kit, model, turn) : currentPane(kit, model)
-  }
 
   return isDocked ? (
     <Box
@@ -56,6 +50,6 @@ export function paneView(
   ) : isNarrow ? (
     <Box>{Sections.dimNote(kit, Names.RESIZE_TERMINAL_TEXT)}</Box>
   ) : (
-    <Box flexDirection="column">{dialogOf()}</Box>
+    dialogPane(kit, model)
   )
 }

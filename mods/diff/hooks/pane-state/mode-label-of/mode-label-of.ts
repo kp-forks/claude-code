@@ -36,7 +36,7 @@ export function modeLabelOf(
           return `branch vs ${source.baseBranch}`
         }
 
-        return isSettledBranch ? `vs ${base} (no base branch)` : 'branch'
+        return isSettledBranch ? `vs ${base} (no base branch)` : 'branch diff'
     }
   }
 

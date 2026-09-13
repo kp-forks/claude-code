@@ -36,7 +36,7 @@ export function fileRow(
 
   return listRow(
     kit,
-    { key: row.key, label, onPress },
+    { key: row.key, label, onPress, isDim: true },
     diffStat(kit, row.added, row.removed),
   )
 }
