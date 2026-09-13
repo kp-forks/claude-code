@@ -6,6 +6,6 @@ import type { StampProbe } from '../stamp-probe'
  * stamp probe over the tree's top, and when read, the paths dirty then.
  */
 export type DatingContext = {
-  deps: Pick<GitDeps, 'sessionStartMs'> & Partial<Pick<GitDeps, 'baseline'>>
+  deps: Pick<GitDeps, 'sessionStartMs' | 'baseline'>
   stamps: StampProbe
 }
