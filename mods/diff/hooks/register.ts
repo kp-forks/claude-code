@@ -729,6 +729,10 @@ export function register(on: On) {
 
     const focus = isListed ? Views.dialogFocusOf(model, e.element) : null
 
+    if (focus === 'stay') {
+      return {}
+    }
+
     if (!focus || !host) {
       return next(e)
     }
