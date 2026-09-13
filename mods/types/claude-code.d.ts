@@ -1931,13 +1931,13 @@ declare module 'claude-code' {
            * on `ui.open` may refuse it. The keyboard is the person's; unasked, it
            * waits undrawn below 144 columns (110 once asked), judged at each open.
            *
-           * @param pane `id` (1-64 of letters, digits, `_`, `-`), `title`, `focus`;
-           *   `closeOnEscape` and `holdToasts` make it a dialog (Escape closes it)
+           * @param pane `id` (1-64 of letters, digits, `_`, `-`), `title`, `focus`,
+           *   `closeOnEscape` and `holdToasts` (a dialog), `rows` it wants inline
            * @returns settles once the pane is open (or retitled)
            * @example
            * await $.ui.open({ id: "clock", title: "Clock" })
            * @example
-           * await $.ui.open({ id: "pick", focus: true, closeOnEscape: true })
+           * await $.ui.open({ id: "ask", focus: true, closeOnEscape: true, rows: 9 })
            */
           open: (pane: PaneOpenArgs) => Promise<void>;
           /**
@@ -4820,8 +4820,8 @@ declare module 'claude-code' {
   };
 
   /**
-   * The argument of `$.ui.open`: which pane, its title, whether the plugin asks
-   * the person's keyboard for it, and its dialog manners (Escape, toasts).
+   * The argument of `$.ui.open`: which pane, its title, whether it asks the
+   * person's keyboard, its dialog manners, and the rows it wants inline.
    */
   export type PaneOpenArgs = {
       /**
@@ -4862,6 +4862,15 @@ declare module 'claude-code' {
        * show. Left out, toasts show as they come. Each open sets it anew.
        */
       holdToasts?: true;
+      /**
+       * The body rows the pane's content wants while seated inline above the
+       * prompt: it opens that tall, up to what the layout spares, not a third.
+       *
+       * A request, not a grant: a size the person dragged or keyed the block
+       * to wins, this session's or a kept one, and the dock ignores it. A
+       * positive whole number; left out, a third. Each open sets it anew.
+       */
+      rows?: number;
   };
 
   /**
@@ -8853,8 +8862,8 @@ declare module 'claude-code' {
    * hook drew in it (a pane's body, the band above the prompt).
    *
    * Every key but `offset` is the engine's word, pinned: `next(e)` passes
-   * them on, a rewrite that leaves one out keeps it, one that changes it fails
-   * the hook. `offset` is the hook's to rewrite; the window has not moved yet.
+   * them on, a rewrite that leaves one out keeps it, one that changes or adds
+   * one fails the hook. `offset` is the hook's to rewrite; nothing moved yet.
    */
   export type UiScrollInput = {
       /**
@@ -8897,6 +8906,15 @@ declare module 'claude-code' {
        * Who moves it (UiScrollOrigin), set by the engine where the move starts.
        */
       origin: UiScrollOrigin;
+      /**
+       * The body cell the person's wheel or trackpad was over (UiScrollPointer);
+       * absent for the scroll keys and for `$.ui.scroll`. Read-only.
+       *
+       * Moves summed while a dispatch was in flight carry the latest one's. A
+       * hook pinning a list over rows it scrolls itself tells a tick over the
+       * list (`row` among its list's rows) from one over the body.
+       */
+      pointer?: UiScrollPointer;
   };
 
   /**
@@ -8920,6 +8938,30 @@ declare module 'claude-code' {
        * The scrolling plugin's name.
        */
       name: string;
+  };
+
+  /**
+   * The cell the pointer was over when the person's wheel raised `ui.scroll`,
+   * in the site's body: the box its `ui.render` hook draws into, as painted.
+   *
+   * The DOM's `clientY - body.top` in cells, the window's offset not added: a
+   * hook drawing its own window reads `row` as its tree's row, one the engine
+   * scrolls adds the `scroll.offset` it drew with. The frame lies outside.
+   */
+  export type UiScrollPointer = {
+      /**
+       * 0 at the body's left edge, as `bodyColumns` counts them; negative, or
+       * `bodyColumns` and past, over an inline pane's side borders.
+       */
+      column: number;
+      /**
+       * 0 at the body's first showing row, as `bodyRows` counts them.
+       *
+       * The tree's row is `scroll.offset + row` under the engine's window, and
+       * `row` itself under a hook's own (offset 0); negative over a pane's top
+       * border or tab row, `bodyRows` or more over its bottom border.
+       */
+      row: number;
   };
 
   /**
