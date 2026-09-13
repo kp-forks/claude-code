@@ -200,6 +200,38 @@ describe('views', () => {
     expect(walked).not.toContain('file0.ts')
   })
 
+  test('off fullscreen, the walk stops at the last file', async ($, on) => {
+    const world = Fixtures.inRepository(on, Fixtures.MANY_FILES)
+
+    await $.session.start(Fixtures.SESSION)
+    await $.command.run(Fixtures.DIALOG_DIFF)
+    await world.clock.advance(Fixtures.SETTLE_MS)
+    await $.ui.render(Fixtures.INLINE_PANE)
+    await $.ui.focus(Fixtures.ringOnto('file:file3.ts'))
+    await $.ui.render(Fixtures.INLINE_PANE)
+    await $.ui.focus(Fixtures.ringOnto('file:file5.ts'))
+    await $.ui.render(Fixtures.INLINE_PANE)
+    await $.ui.focus(Fixtures.ringOnto('file:file7.ts'))
+    await $.ui.render(Fixtures.INLINE_PANE)
+    await $.ui.focus(Fixtures.ringOnto('file:file9.ts'))
+
+    const last = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
+
+    expect(last).toContain('\u276f file9.ts')
+    expect(last).toContain(' \u2191 5 more files')
+
+    expect(
+      await $.ui.focus(Fixtures.ringOnto('file:file5.ts')),
+      'the ring would wrap to the first row drawn; it stays',
+    ).toEqual({})
+
+    expect(Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))).toContain(
+      '\u276f file9.ts',
+    )
+
+    expect(world.focused, 'the wrap never reached the engine').toHaveLength(4)
+  })
+
   test('off fullscreen, the dialog draws at any width', async ($, on) => {
     const world = Fixtures.inRepository(on, Fixtures.TWO_FILES)
 
