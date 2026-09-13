@@ -1,12 +1,11 @@
 import type { RenderElement } from 'claude-code'
 
+import Limits from '../../../limits'
 import type { Kit } from '../../kit'
 import Layout from '../../layout'
 import { diffStat } from '../diff-stat'
 import type { FileRowModel } from '../file-row-model'
 import { listRow } from '../list-row'
-import { PATH_FLOOR } from '../path-floor'
-import { STAT_CELLS } from '../stat-cells'
 import { statTextOf } from '../stat-text-of'
 
 /**
@@ -29,7 +28,7 @@ export function fileRow(
   const label = Layout.padEnd(
     Layout.truncateStart(
       Layout.sanitizeName(row.displayPath),
-      Math.max(kit.columns - STAT_CELLS, PATH_FLOOR),
+      Math.max(kit.columns - Limits.STAT_CELLS, Limits.PATH_FLOOR),
     ),
     kit.columns - statTextOf(row.added, row.removed).length,
   )

@@ -3,12 +3,11 @@
 /* @jsxFrag Fragment */
 import type { RenderElement } from 'claude-code'
 
+import Limits from '../../limits'
 import type Entries from '../entries'
 import type { Kit } from '../kit'
 import Layout from '../layout'
 import { diffStat } from './diff-stat'
-import { PATH_FLOOR } from './path-floor'
-import { STAT_CELLS } from './stat-cells'
 
 /**
  * One row of the open pre-session section's legend (PreSessionSection): the
@@ -27,7 +26,7 @@ export function legendRow(kit: Kit, entry: Entries.BodyEntry): RenderElement {
         <Text dimColor wrap="truncate-end">
           {Layout.truncateStart(
             Layout.sanitizeName(entry.displayPath),
-            Math.max(kit.columns - STAT_CELLS, PATH_FLOOR),
+            Math.max(kit.columns - Limits.STAT_CELLS, Limits.PATH_FLOOR),
           )}
         </Text>,
         <Box flexGrow={1} />,

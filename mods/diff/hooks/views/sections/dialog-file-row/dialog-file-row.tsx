@@ -3,10 +3,9 @@
 /* @jsxFrag Fragment */
 import type { RenderElement } from 'claude-code'
 
+import Limits from '../../../limits'
 import type { Kit } from '../../kit'
 import Layout from '../../layout'
-import { DIALOG_PATH_FLOOR } from '../dialog-path-floor'
-import { DIALOG_PATH_RESERVE } from '../dialog-path-reserve'
 import { diffStat } from '../diff-stat'
 import type { FileRowModel } from '../file-row-model'
 import { listRow } from '../list-row'
@@ -27,7 +26,12 @@ export function dialogFileRow(
   onPress: () => void,
 ): RenderElement {
   const { Text } = kit.ui
-  const room = Math.max(DIALOG_PATH_FLOOR, kit.columns - DIALOG_PATH_RESERVE)
+
+  const room = Math.max(
+    Limits.DIALOG_PATH_FLOOR,
+    kit.columns - Limits.DIALOG_PATH_RESERVE,
+  )
+
   const mark = row.isSelected ? POINTER : ' '
   const name = Layout.truncateStart(Layout.sanitizeName(row.displayPath), room)
 
