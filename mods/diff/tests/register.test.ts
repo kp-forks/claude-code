@@ -129,7 +129,9 @@ describe('register', () => {
       text: 'Diff panel shown',
     })
 
-    expect(world.opened).toEqual([{ id: 'diff', title: 'Diff' }])
+    expect(world.opened).toEqual([
+      { id: 'diff', title: 'Diff', holdToasts: true },
+    ])
 
     await world.clock.advance(Fixtures.SETTLE_MS)
 
@@ -137,6 +139,28 @@ describe('register', () => {
 
     expect(drawn).toContain('1 file changed')
     expect(drawn).toContain('app.ts')
+  })
+
+  test('off fullscreen, /diff opens the dialog, focused', async ($, on) => {
+    const world = Fixtures.inRepository(on)
+
+    await $.session.start(Fixtures.SESSION)
+
+    expect(await $.command.run(Fixtures.DIALOG_DIFF)).toEqual({})
+
+    expect(world.opened).toEqual([
+      {
+        id: 'diff',
+        title: 'Diff',
+        holdToasts: true,
+        focus: true,
+        closeOnEscape: true,
+      },
+    ])
+
+    expect(await $.command.run(Fixtures.DIALOG_DIFF)).toEqual({
+      text: 'Diff dialog dismissed',
+    })
   })
 
   test('/diff again closes the pane and says so', async ($, on) => {

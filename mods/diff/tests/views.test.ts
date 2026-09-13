@@ -24,11 +24,11 @@ describe('views', () => {
     expect(drawn).not.toContain('❯')
   })
 
-  test('inline, a row moves the pointer and the body to it', async ($, on) => {
+  test('inline, a row opens that file alone', async ($, on) => {
     const world = Fixtures.inRepository(on, Fixtures.TWO_FILES)
 
     await $.session.start(Fixtures.SESSION)
-    await $.command.run(Fixtures.DIFF)
+    await $.command.run(Fixtures.DIALOG_DIFF)
     await world.clock.advance(Fixtures.SETTLE_MS)
     await $.ui.render(Fixtures.INLINE_PANE)
 
@@ -38,12 +38,37 @@ describe('views', () => {
 
     const drawn = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
 
-    expect(drawn).toContain('\u276f lib.ts')
     expect(drawn).toContain('+export const c = 2')
     expect(drawn).not.toContain('+const a = 2')
+    expect(drawn).not.toContain('app.ts')
+    expect(drawn).toContain('\u2191/\u2193 to scroll \u00b7 Esc to back')
   })
 
-  test('past eight files the docked list counts the rest', async ($, on) => {
+  test('docked, a wheel tick moves the body, not the list', async ($, on) => {
+    const world = Fixtures.inRepository(on, Fixtures.MANY_FILES)
+
+    await $.session.start(Fixtures.SESSION)
+    await $.command.run(Fixtures.DIFF)
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    const before = Fixtures.textOf(await $.ui.render(Fixtures.PANE))
+
+    expect(before, 'listed, and named over its body').toContain('file0.ts')
+    expect(before.split('file0.ts')).toHaveLength(3)
+
+    expect(await $.ui.scroll(Fixtures.WHEEL_TICK)).toEqual({})
+
+    const after = Fixtures.textOf(await $.ui.render(Fixtures.PANE))
+
+    expect(after.split('file0.ts'), 'its name row scrolled away').toHaveLength(
+      2,
+    )
+
+    expect(after).toContain('-const v = 0')
+    expect(after).toContain('10 files changed +10 -10')
+  })
+
+  test('past eight files the docked list scrolls by key', async ($, on) => {
     const world = Fixtures.inRepository(on, Fixtures.MANY_FILES)
 
     await $.session.start(Fixtures.SESSION)
@@ -54,11 +79,18 @@ describe('views', () => {
 
     expect(drawn).toContain('10 files changed +10 -10')
     expect(drawn).toContain('file7.ts')
-    expect(drawn).toContain('↓ 2 more below')
+    expect(drawn).toContain('\u2193 2 more below (opt+\u2193 to scroll)')
+    expect(drawn).not.toContain('file8.ts')
 
-    expect(drawn.indexOf('↓ 2 more below')).toBeLessThan(
-      drawn.indexOf('file8.ts'),
-    )
+    expect(await $.ui.press({ plugin: 'diff', key: 'list-down' })).toEqual({
+      element: 'list-down',
+    })
+
+    const scrolled = Fixtures.textOf(await $.ui.render(Fixtures.PANE))
+
+    expect(scrolled).toContain('\u2191 1 more above')
+    expect(scrolled).toContain('file8.ts')
+    expect(scrolled).toContain('\u2193 1 more below')
   })
 
   test('a rename lists as git prints it, and reads no body', async ($, on) => {
@@ -79,21 +111,27 @@ describe('views', () => {
     ).toEqual([])
   })
 
-  test('inline on a wide terminal, the rows round one file', async ($, on) => {
+  test('inline, the dialog lists every file and its keys', async ($, on) => {
     const world = Fixtures.inRepository(on, Fixtures.TWO_FILES)
 
     await $.session.start(Fixtures.SESSION)
-    await $.command.run(Fixtures.DIFF)
+    await $.command.run(Fixtures.DIALOG_DIFF)
     await world.clock.advance(Fixtures.SETTLE_MS)
 
     const drawn = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
 
-    expect(drawn).toContain('❯ app.ts')
-    expect(drawn).toContain('+const a = 2')
-    expect(drawn).not.toContain('+export const c = 2')
+    expect(drawn).toContain('Uncommitted changes (git diff HEAD)')
+    expect(drawn).toContain('2 files changed +3 -1')
+    expect(drawn).toContain('  app.ts')
+    expect(drawn).toContain('  lib.ts')
+    expect(drawn).not.toContain('+const a = 2')
+
+    expect(drawn).toContain(
+      '\u2191/\u2193 to select \u00b7 Enter to view \u00b7 Esc to close',
+    )
   })
 
-  test('inline on a narrow terminal, the resize line', async ($, on) => {
+  test('narrow under the fullscreen layout, the resize line', async ($, on) => {
     const world = Fixtures.inRepository(on, Fixtures.TWO_FILES)
 
     await $.session.start(Fixtures.SESSION)
@@ -105,5 +143,41 @@ describe('views', () => {
     ).toBe(
       'Resize your terminal to at least 110 columns to show the diff panel',
     )
+  })
+
+  test('off fullscreen, forty files list five at a time', async ($, on) => {
+    const world = Fixtures.inRepository(on, Fixtures.MANY_FILES)
+
+    await $.session.start(Fixtures.SESSION)
+    await $.command.run(Fixtures.DIALOG_DIFF)
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    const drawn = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
+
+    expect(drawn).toContain('  file4.ts')
+    expect(drawn).not.toContain('file5.ts')
+    expect(drawn).toContain(' \u2193 5 more files')
+
+    expect(await $.ui.press({ plugin: 'diff', key: 'files-down' })).toEqual({
+      element: 'files-down',
+    })
+
+    const paged = Fixtures.textOf(await $.ui.render(Fixtures.INLINE_PANE))
+
+    expect(paged).toContain(' \u2191 5 more files')
+    expect(paged).toContain('  file9.ts')
+    expect(paged).not.toContain('file4.ts')
+  })
+
+  test('off fullscreen, the dialog draws at any width', async ($, on) => {
+    const world = Fixtures.inRepository(on, Fixtures.TWO_FILES)
+
+    await $.session.start(Fixtures.SESSION)
+    await $.command.run(Fixtures.DIALOG_DIFF)
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(
+      Fixtures.textOf(await $.ui.render(Fixtures.NARROW_INLINE_PANE)),
+    ).toContain('Uncommitted changes (git diff HEAD)')
   })
 })

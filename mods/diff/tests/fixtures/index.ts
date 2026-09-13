@@ -1,5 +1,6 @@
 export * from './builtin-holds.js'
 export * from './clear.js'
+export * from './dialog-diff.js'
 export * from './diff.js'
 export * from './git-hung.js'
 export * from './git-in.js'
@@ -23,5 +24,6 @@ export * from './settle-ms.js'
 export * from './starts-session.js'
 export * from './text-of.js'
 export * from './two-files.js'
+export * from './wheel-tick.js'
 
 export * as default from '.'
