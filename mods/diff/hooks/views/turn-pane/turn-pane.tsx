@@ -5,13 +5,13 @@ import type { RenderElement } from 'claude-code'
 
 import PaneState from '../../pane-state'
 import type Turns from '../../turns'
-import Detail from '../detail'
+import Entries from '../entries'
 import type { Kit } from '../kit'
-import Layout from '../layout'
 import Sections from '../sections'
+import { selectedDetailOf } from '../selected-detail-of'
 
 /**
- * The pane over one past turn's edits (DiffDialog's T<n> tab): the turn's
+ * The inline pane over one past turn's edits (DiffDialog's T<n> tab): its
  * counts, its prompt's opening words, the pickers, its files, one body.
  *
  * @param kit the elements, the handlers, the width
@@ -32,11 +32,12 @@ export function turnPane(
     null
 
   const rows = turn.files.map(file =>
-    Sections.fileRow(
+    Sections.dialogFileRow(
       kit,
       {
         key: Sections.fileKeyOf(file.path),
         path: file.path,
+        displayPath: file.path,
         added: file.added,
         removed: file.removed,
         note: null,
@@ -46,38 +47,17 @@ export function turnPane(
     ),
   )
 
-  const detail = selected
-    ? [
-        Sections.divider(kit),
-        Detail.detailView(
-          kit,
-          {
-            words: model.words,
-            path: selected.path,
-            renamedFrom: null,
-            isUntracked: false,
-            isBinary: false,
-            body: {
-              hunks: selected.hunks,
-              isTruncated: selected.isTruncated,
-              isLarge: false,
-            },
-            bodyState: 'ready',
-            isArmed: model.armedPath === selected.path,
-          },
-          () => kit.actions.toggleAsk(selected.path),
-        ),
-      ]
-    : []
+  const detail = selectedDetailOf(
+    kit,
+    selected ? Entries.turnEntryOf(selected) : null,
+    model,
+  )
 
   return (
     <Box flexDirection="column">
       {Sections.present([
-        Sections.headerView(kit, PaneState.turnTotalsOf(turn)),
-        Sections.dimNote(
-          kit,
-          `Turn ${turn.index} "${Layout.sanitizeName(turn.preview)}"`,
-        ),
+        Sections.titleRow(kit, PaneState.dialogTitleOf(model)),
+        Sections.headerView(kit, PaneState.turnTotalsOf(turn), null),
         Sections.controlsView(kit, model),
         ...rows,
         ...detail,

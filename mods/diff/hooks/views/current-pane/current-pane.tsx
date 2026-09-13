@@ -6,21 +6,23 @@ import type { RenderElement } from 'claude-code'
 import type Git from '../../git'
 import Names from '../../names'
 import PaneState from '../../pane-state'
-import Detail from '../detail'
+import Entries from '../entries'
 import type { Kit } from '../kit'
 import Layout from '../layout'
+import { preludeOf } from '../prelude-of'
 import Sections from '../sections'
-import { fileRowOf } from './file-row-of'
+import { selectedDetailOf } from '../selected-detail-of'
+import { dialogRowsOf } from './dialog-rows-of'
 import { listBodyOf } from './list-body-of'
 import { messagePaneOf } from './message-pane-of'
 
 /**
- * The pane over the repository's diff now (ReplDiffSidebarBody, one file's
- * body at a time): header, base line, todo bar, pickers, rows, detail.
+ * The inline pane over the repository's diff now (DiffDialog): header,
+ * pickers, todo bar, the rows round the selected file, that file's detail.
  *
  * The toggle sits above the rows; the elision count, withheld-untracked
- * note and pre-session line below, with blank rows as the built-in leaves.
- * With nothing to list, messagePaneOf draws the body, the header a close.
+ * note and pre-session line below. With nothing to list, messagePaneOf
+ * draws the body.
  *
  * @param kit the elements, the handlers, the width, the rows
  * @param model the pane's state
@@ -32,19 +34,10 @@ export function currentPane(
 ): RenderElement {
   const { Box } = kit.ui
   const { data } = model
+  const prelude = preludeOf(kit, model)
 
-  if (model.isOutsideRepository) {
-    return <Box>{Sections.dimNote(kit, Names.NOT_IN_REPOSITORY_TEXT)}</Box>
-  }
-
-  if (!data && !model.hasSettled) {
-    return messagePaneOf(kit, {
-      top: [Sections.headerView(kit, null)],
-      message: ['Loading diff…'],
-      controls: null,
-      earlier: null,
-      rest: [],
-    })
+  if (prelude) {
+    return prelude
   }
 
   const noise = model.isNoiseShown ? 'shown' : 'hidden'
@@ -55,18 +48,14 @@ export function currentPane(
     ? PaneState.headerTotalsOf(data, partition)
     : PaneState.ZERO_TOTALS
 
-  const empty = PaneState.emptyStateOf(data, totals.filesCount, model.words)
-  const baseLabel = PaneState.baseLabelOf(model, totals.filesCount)
+  const empty = PaneState.emptyStateOf(model, totals.filesCount)
 
   const selected = PaneState.selectionOf(
     PaneState.listedOf(partition, preSession),
     model.selectedPath,
   )
 
-  const rowOf = (file: Git.FileStat): RenderElement =>
-    Sections.fileRow(kit, fileRowOf(file, selected?.path ?? null), () =>
-      kit.actions.selectFile(file.path),
-    )
+  const selectedPath = selected?.path ?? null
 
   const noteOf = (text: string | null): RenderElement | null =>
     text === null ? null : Sections.dimNote(kit, Layout.sanitizeName(text))
@@ -97,72 +86,62 @@ export function currentPane(
   const isEarlierListed = earlierFiles.length > 0
 
   const earlierRows = isEarlierListed
-    ? [<Box height={1} />, ...earlierFiles.map(rowOf)]
+    ? [<Box height={1} />, ...dialogRowsOf(kit, earlierFiles, selectedPath)]
     : []
 
   const isUntrackedNoted = data?.isUntrackedWithheld === true && !empty
   const listed = listBodyOf(kit, { data, partition, totals, empty })
-  const notes = listed.filter(line => typeof line === 'string')
-  const hasRows = notes.length < listed.length
+
+  const notes = listed.flatMap(line => (typeof line === 'string' ? [line] : []))
+
+  const rows = listed.filter(
+    (line): line is Git.FileStat => typeof line !== 'string',
+  )
+
+  const hasRows = rows.length > 0
   const message = empty ? [empty.headline, ...notes] : hasRows ? [] : notes
-  const header = Sections.headerView(kit, empty ? null : totals)
+  const header = Sections.headerView(kit, empty ? null : totals, null)
+  const subline = noteOf(PaneState.unbornNoteOf(model, totals.filesCount))
 
   const notShownNote = noteOf(
     totals.notShown > 0 ? `${totals.notShown} not shown` : null,
   )
 
   const untrackedNote = noteOf(
-    isUntrackedNoted ? Names.untrackedWithheldTextOf(model.words) : null,
+    isUntrackedNoted ? Names.untrackedWithheldTextOf(model) : null,
   )
 
-  const detail = selected
-    ? [
-        Sections.divider(kit),
-        Detail.detailView(
-          kit,
-          {
-            words: model.words,
-            path: selected.path,
-            renamedFrom: selected.renamedFrom,
-            isUntracked: selected.isUntracked,
-            isBinary: selected.isBinary,
-            body: model.body,
-            bodyState: model.bodyState,
-            isArmed: model.armedPath === selected.path,
-          },
-          () => kit.actions.toggleAsk(selected.path),
-        ),
-      ]
-    : []
+  const detail = selectedDetailOf(
+    kit,
+    selected ? Entries.bodyEntryOf(selected, model) : null,
+    model,
+  )
+
+  const top = Sections.present([
+    Sections.titleRow(kit, PaneState.dialogTitleOf(model)),
+    header,
+    subline,
+    Sections.controlsView(kit, model),
+    Sections.todoBar(kit, model),
+    noiseToggle,
+  ])
 
   const isMessageShown = message.length > 0
 
   return isMessageShown ? (
     messagePaneOf(kit, {
-      top: Sections.present([
-        header,
-        noteOf(baseLabel),
-        Sections.todoBar(kit, model),
-        noiseToggle,
-        notShownNote,
-        untrackedNote,
-      ]),
+      top: Sections.present([...top, notShownNote, untrackedNote]),
       message,
-      controls: Sections.controlsView(kit, model),
+      controls: null,
       earlier: earlierToggle,
       rest: [...earlierRows, ...detail],
     })
   ) : (
     <Box flexDirection="column">
       {Sections.present([
-        header,
-        noteOf(baseLabel),
-        Sections.todoBar(kit, model),
-        Sections.controlsView(kit, model),
-        noiseToggle,
-        ...listed.map(line =>
-          typeof line === 'string' ? noteOf(line) : rowOf(line),
-        ),
+        ...top,
+        ...dialogRowsOf(kit, rows, selectedPath),
+        ...notes.map(noteOf),
         notShownNote,
         untrackedNote,
         hasEarlier ? <Box height={1} /> : null,

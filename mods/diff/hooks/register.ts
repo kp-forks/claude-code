@@ -3,11 +3,13 @@ import type { On, ResultOf, SessionMessage, Timer } from 'claude-code'
 import Ask from './ask'
 import Backend from './backend'
 import { COMMAND_SPEC } from './command-spec'
+import { drawnFilesOf } from './drawn-files-of'
 import { entryKindsOf } from './entry-kinds-of'
 import type Git from './git'
 import type { Host } from './host'
 import { isOnPaneSurface } from './is-on-pane-surface'
 import Limits from './limits'
+import { mapLimited } from './map-limited'
 import { messageOf } from './message-of'
 import { mtimeOf } from './mtime-of'
 import Names from './names'
@@ -36,13 +38,15 @@ export function register(on: On) {
   let hasAutoOpened = false
   let columns: number | null = null
   let shownSessionId: string | null = null
-  let wasDrawnSinceProbe = false
   let armed: Ask.ArmedAsk | null = null
   let carrying: Ask.ArmedAsk | null = null
   let isRefreshing = false
   let isRefreshQueued = false
   let generation = 0
-  let bodyKey: string | null = null
+  let bodyStamp: string | null = null
+  let bodyBase: string | null = null
+
+  const bodyLoads = new Map<string, Promise<Git.FileHunks | null>>()
 
   const polled = { toplevel: '', headKey: '' }
 
@@ -151,49 +155,70 @@ export function register(on: On) {
     )
   }
 
-  const selectedOf = (): Git.FileStat | null =>
-    PaneState.selectionOf(
-      PaneState.listedOf(
-        PaneState.partitionOf(
-          model.data?.files ?? [],
-          model.isNoiseShown ? 'shown' : 'hidden',
-        ),
-        model.isPreSessionShown ? 'shown' : 'hidden',
-      ),
-      model.selectedPath,
-    )
-
-  async function loadBody(engine: Host): Promise<boolean> {
+  async function loadBodies(engine: Host): Promise<boolean> {
     const { data } = model
-    const selected = selectedOf()
+    const pinned = backend
 
-    if (!data || !selected || !backend) {
-      bodyKey = null
-      model = { ...model, body: null, bodyState: 'idle' }
+    if (!data || !pinned) {
+      bodyStamp = null
+      bodyBase = null
+      bodyLoads.clear()
+      model = { ...model, bodies: PaneState.NO_BODIES }
 
       return false
     }
 
-    const key = `${generation}|${data.baseRef}|${selected.path}`
+    const stamp = bodyStampOf(data)
+    const isNewBase = data.baseRef !== bodyBase
 
-    if (key === bodyKey) {
-      return false
+    if (stamp !== bodyStamp) {
+      bodyStamp = stamp
+      bodyLoads.clear()
     }
 
-    bodyKey = key
-    model = { ...model, body: null, bodyState: 'loading' }
-    redraw(engine)
-
-    const body = await backend.fetchFileHunks(data, selected)
-
-    if (bodyKey !== key) {
-      return body === null
+    if (isNewBase) {
+      bodyBase = data.baseRef
+      model = { ...model, bodies: PaneState.NO_BODIES }
+      redraw(engine)
     }
 
-    model = { ...model, body, bodyState: body ? 'ready' : 'failed' }
-    redraw(engine)
+    return fetchBodies(engine, pinned, data)
+  }
 
-    return body === null
+  const bodyStampOf = (data: Git.DiffData) => `${generation}|${data.baseRef}`
+
+  async function fetchBodies(
+    engine: Host,
+    pinned: Backend.Backend,
+    data: Git.DiffData,
+  ): Promise<boolean> {
+    const stamp = bodyStampOf(data)
+
+    function loadOf(file: Git.FileStat): Promise<Git.FileHunks | null> {
+      const load = pinned.fetchFileHunks(data, file)
+      bodyLoads.set(file.path, load)
+
+      return load.then(body => {
+        if (bodyStamp === stamp) {
+          model = {
+            ...model,
+            bodies: new Map(model.bodies).set(file.path, body),
+          }
+
+          redraw(engine)
+        }
+
+        return body
+      })
+    }
+
+    return (
+      await mapLimited(
+        drawnFilesOf(model).filter(file => !bodyLoads.has(file.path)),
+        Limits.BODY_FETCH_CONCURRENCY,
+        loadOf,
+      )
+    ).includes(null)
   }
 
   function startPoll(engine: Host, pinned: Backend.Backend) {
@@ -274,7 +299,7 @@ export function register(on: On) {
           break
       }
 
-      const hasHunksFailed = await loadBody(engine)
+      const hasHunksFailed = await loadBodies(engine)
 
       if (outcome.kind === 'data') {
         record.mark(
@@ -318,9 +343,8 @@ export function register(on: On) {
     engine: Host,
     trigger: (typeof Record.SHOWN_TRIGGERS)[number],
   ): Promise<void> {
-    const pane = { id: Names.PANE_ID, title: Names.PANE_TITLE }
-    const isManual = trigger === 'manual'
-    await engine.openPane(isManual ? { ...pane, ...Names.FOCUSED_PANE } : pane)
+    model = { ...model, selectedPath: null }
+    await engine.openPane({ id: Names.PANE_ID, title: Names.PANE_TITLE })
     isPaneOpen = true
 
     const sessionId = await engine.sessionId().catch(() => null)
@@ -343,14 +367,6 @@ export function register(on: On) {
       kind: 'ok',
       props: { tab: { value: tab, of: Record.TABS } },
     })
-  }
-
-  async function wasDrawnWhenProbed(engine: Host): Promise<boolean> {
-    wasDrawnSinceProbe = false
-    engine.invalidate()
-    await engine.sleep(Limits.OPEN_PROBE_MS)
-
-    return wasDrawnSinceProbe
   }
 
   async function openOnFirstEdit(engine: Host): Promise<void> {
@@ -393,17 +409,21 @@ export function register(on: On) {
   const actionsOf = (engine: Host): Views.PaneActions => ({
     selectFile: path => {
       model = { ...model, selectedPath: path }
-      void loadBody(engine)
+
+      if (model.placement === 'dock') {
+        void engine.scrollTo(Views.bodyKeyOf(path)).catch(() => undefined)
+      }
+
       redraw(engine)
     },
     toggleNoise: () => {
       model = { ...model, isNoiseShown: !model.isNoiseShown }
-      void loadBody(engine)
+      void loadBodies(engine)
       redraw(engine)
     },
     togglePreSession: () => {
       model = { ...model, isPreSessionShown: !model.isPreSessionShown }
-      void loadBody(engine)
+      void loadBodies(engine)
       redraw(engine)
     },
     chooseBase: value => {
@@ -413,8 +433,7 @@ export function register(on: On) {
         return
       }
 
-      bodyKey = null
-      model = { ...model, requestedMode: mode, body: null, bodyState: 'idle' }
+      model = { ...model, requestedMode: mode }
 
       Record.recorderOf(engine).mark(Record.FEATURES.baseSwitch, {
         kind: 'ok',
@@ -441,7 +460,6 @@ export function register(on: On) {
         : { kind: 'current' }
 
       model = { ...model, source, selectedPath: null }
-      void loadBody(engine)
       redraw(engine)
     },
     toggleAsk: path => {
@@ -454,12 +472,6 @@ export function register(on: On) {
 
       arm(engine, path)
     },
-    close: () => {
-      void closePane(engine)
-        .then(() => markTabSwitch(engine, 'convo'))
-        .then(() => engine.storeSet(Names.STORE_OPEN_KEY, false))
-        .catch(() => undefined)
-    },
   })
 
   function arm(engine: Host, path: string) {
@@ -467,7 +479,7 @@ export function register(on: On) {
       path,
       PaneState.pickedTurnOf(model)?.files.find(file => file.path === path)
         ?.hunks ??
-        model.body?.hunks ??
+        model.bodies.get(path)?.hunks ??
         [],
     )
 
@@ -505,7 +517,6 @@ export function register(on: On) {
       now: () => $.clock.now(),
       after: (ms, fn) => $.clock.after(ms, fn),
       every: (ms, fn) => $.clock.every(ms, fn),
-      sleep: ms => $.clock.sleep(ms),
       run: (argv, init) => $.process.run(argv, init),
       stat: path => $.fs.stat(path),
       listDir: path => $.fs.list(path),
@@ -518,6 +529,8 @@ export function register(on: On) {
       uiLog: text => $.ui.log(text),
       openPane: pane => $.ui.open(pane),
       closePane: pane => $.ui.close(pane),
+      scrollTo: key =>
+        $.ui.scroll({ to: { key }, in: Names.PANE_ID, block: 'start' }),
       registerCommand: spec => $.command.register(spec),
       sessionId: () => $.session.id(),
       mark: entry => $.telemetry.mark(entry),
@@ -542,9 +555,8 @@ export function register(on: On) {
 
     const { Box, Text, Button, Select, Code } = await $.ui.resolve(e)
 
-    wasDrawnSinceProbe = true
     columns = e.viewport?.columns ?? columns
-    model = { ...model, isFocused: e.props.isFocused }
+    model = { ...model, placement: e.props.placement }
 
     return Views.paneView(
       {
@@ -554,7 +566,7 @@ export function register(on: On) {
         rows: e.props.scroll.bodyRows,
       },
       model,
-      e.props.placement,
+      { placement: e.props.placement, terminalColumns: columns },
     )
   })
 
@@ -573,11 +585,7 @@ export function register(on: On) {
       }
     }
 
-    const toggle = PaneToggle.paneToggleOf({
-      isBelievedOpen: isPaneOpen,
-      wasDrawnWhenProbed: isPaneOpen && (await wasDrawnWhenProbed(host)),
-      columns,
-    })
+    const toggle = PaneToggle.paneToggleOf({ isOpen: isPaneOpen, columns })
 
     if (toggle === 'too-narrow') {
       return { text: Names.RESIZE_TERMINAL_TEXT }
@@ -588,7 +596,26 @@ export function register(on: On) {
     markTabSwitch(host, isOpening ? 'diff' : 'convo')
     await host.storeSet(Names.STORE_OPEN_KEY, isOpening).catch(() => undefined)
 
-    return {}
+    return {
+      text: isOpening ? Names.PANEL_SHOWN_TEXT : Names.PANEL_HIDDEN_TEXT,
+    }
+  })
+
+  on('ui.close', { id: Names.PANE_ID }, async ($, e, next) => {
+    const result = await next(e)
+    const isClosed = result.deny === undefined
+    const isPersons = isClosed && e.origin.kind === 'person'
+
+    if (isClosed) {
+      isPaneOpen = false
+    }
+
+    if (isPersons && host) {
+      markTabSwitch(host, 'convo')
+      await host.storeSet(Names.STORE_OPEN_KEY, false).catch(() => undefined)
+    }
+
+    return result
   })
 
   on('command.run', { command: ['clear', 'resume'] }, async ($, e, next) => {
@@ -600,7 +627,9 @@ export function register(on: On) {
       }
 
       hasAutoOpened = false
-      bodyKey = null
+      bodyStamp = null
+      bodyBase = null
+      bodyLoads.clear()
       disarm(host)
       model = PaneState.afterNewSession(model)
     }

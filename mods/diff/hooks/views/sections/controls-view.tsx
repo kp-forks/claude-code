@@ -3,7 +3,7 @@
 /* @jsxFrag Fragment */
 import type { RenderElement } from 'claude-code'
 
-import type PaneState from '../../pane-state'
+import PaneState from '../../pane-state'
 import type { Kit } from '../kit'
 import { present } from './present'
 
@@ -13,7 +13,7 @@ import { present } from './present'
  *
  * The source picker draws only when a turn exists, as DiffDialog hides its
  * tabs; the base picker is ctrl+x b's cycle as a Select over the backend's
- * modes, uncommitted naming the base as the base line does (modeLabelOf).
+ * modes, each worded as the built-in's base line (modeLabelOf) it replaces.
  *
  * @param kit the elements and the handlers
  * @param model what is picked now and the turns to pick from
@@ -47,26 +47,15 @@ export function controlsView(
   ) : null
 
   const isCurrent = source.kind === 'current'
-  const fetchedSource = model.data?.source
-  const isWorkingTree = fetchedSource?.kind === 'working-tree'
-  const base = isWorkingTree ? fetchedSource.base : model.words.base
 
   const basePicker = isCurrent ? (
     <Select
       key="base"
       label="base"
-      options={model.baseModes.map(mode => {
-        const isUncommitted = mode === 'uncommitted'
-        const isSession = mode === 'session'
-
-        const label = isUncommitted
-          ? `uncommitted (vs ${base})`
-          : isSession
-            ? 'this session'
-            : mode
-
-        return { value: mode, label }
-      })}
+      options={model.baseModes.map(mode => ({
+        value: mode,
+        label: PaneState.modeLabelOf(mode, model),
+      }))}
       value={model.requestedMode}
       onSelect={value => kit.actions.chooseBase(value)}
     />
