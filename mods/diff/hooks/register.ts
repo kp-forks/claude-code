@@ -1,4 +1,10 @@
-import type { On, ResultOf, SessionMessage, Timer } from 'claude-code'
+import type {
+  On,
+  PaneOpenArgs,
+  ResultOf,
+  SessionMessage,
+  Timer,
+} from 'claude-code'
 
 import Ask from './ask'
 import Backend from './backend'
@@ -35,6 +41,7 @@ export function register(on: On) {
   let probing: Promise<boolean> | null = null
   let sessionStartMs = 0
   let isPaneOpen = false
+  let dialogRows: number | null = null
   let hasAutoOpened = false
   let columns: number | null = null
   let shownSessionId: string | null = null
@@ -141,7 +148,31 @@ export function register(on: On) {
     return true
   }
 
+  function dialogPane(): PaneOpenArgs {
+    return {
+      id: Names.PANE_ID,
+      title: Names.PANE_TITLE,
+      holdToasts: true,
+      closeOnEscape: true,
+      rows: Views.dialogRowsOf(model),
+    }
+  }
+
+  function fitDialog(engine: Host) {
+    const rows = Views.dialogRowsOf(model)
+
+    const isStale =
+      isPaneOpen && model.isFullscreen === false && rows !== dialogRows
+
+    if (isStale) {
+      dialogRows = rows
+      void engine.openPane(dialogPane()).catch(() => undefined)
+    }
+  }
+
   function redraw(engine: Host) {
+    fitDialog(engine)
+
     if (timers.has('redraw')) {
       return
     }
@@ -352,12 +383,13 @@ export function register(on: On) {
       place: { ...model.place, top: 0, listStart: 0 },
     }
 
-    await engine.openPane({
-      id: Names.PANE_ID,
-      title: Names.PANE_TITLE,
-      holdToasts: true,
-      ...(isDialog ? ({ focus: true, closeOnEscape: true } as const) : {}),
-    })
+    dialogRows = isDialog ? Views.dialogRowsOf(model) : null
+
+    await engine.openPane(
+      isDialog
+        ? { ...dialogPane(), focus: true }
+        : { id: Names.PANE_ID, title: Names.PANE_TITLE, holdToasts: true },
+    )
 
     isPaneOpen = true
 
@@ -666,14 +698,10 @@ export function register(on: On) {
       model = { ...model, dialogView: 'list' }
       redraw(host)
 
+      dialogRows = Views.dialogRowsOf(model)
+
       void host
-        .openPane({
-          id: Names.PANE_ID,
-          title: Names.PANE_TITLE,
-          focus: true,
-          closeOnEscape: true,
-          holdToasts: true,
-        })
+        .openPane({ ...dialogPane(), focus: true })
         .catch(() => undefined)
 
       return { deny: 'back to the file list' }
@@ -708,7 +736,15 @@ export function register(on: On) {
       return next(e)
     }
 
-    model = { ...model, place: Views.bodyScrolledBy(model, e) }
+    const isOverList = Views.isWheelOverList(model, e)
+
+    model = {
+      ...model,
+      place: isOverList
+        ? Views.listScrolledBy(model, e.by)
+        : Views.bodyScrolledBy(model, e),
+    }
+
     host.invalidate()
 
     return {}

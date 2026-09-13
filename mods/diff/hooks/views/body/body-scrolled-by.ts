@@ -5,8 +5,8 @@ import type PaneState from '../../pane-state'
 import Plan from './plan'
 
 /**
- * The docked pane's place after one of the person's scrolls: a wheel tick
- * or arrow three rows, a page key the window's rows, Home and End the ends.
+ * The docked pane's place after one of the person's scrolls of the body:
+ * a wheel tick or arrow three rows, a page key the window, Home/End an end.
  *
  * Told apart by the rows the move asks for against the pane's body and
  * tree, as the engine sizes each; clamped to the body's extent.

@@ -5,7 +5,7 @@ import Segments from './segments'
 
 /**
  * The docked pane's scrolling body laid out under its pinned rows: the
- * segments, their rows, the window's rows, where each file's block starts.
+ * segments and their rows, the window's rows, the files' and list's rows.
  *
  * The pinned rows are counted as sidebarPane draws them (header, base or
  * turn line, todo bar, list block); read from the box last drawn (`place`),
@@ -54,11 +54,15 @@ export function bodyLayoutOf(
     extent += Segments.segmentRowsOf(segment)
   }
 
+  const listTop = Limits.PANE_TOP_PAD_ROWS + headRows + 1
+
   return {
     segments,
     extent,
     visibleRows,
     maxTop: Math.max(0, extent - visibleRows),
     tops,
+    listTop,
+    listEnd: hasList ? listTop + listRows - 2 : listTop,
   }
 }
