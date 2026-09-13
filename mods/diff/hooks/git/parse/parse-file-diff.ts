@@ -3,7 +3,6 @@ import { cutHunks } from '../cut-hunks'
 import { hunkOf } from '../hunk-of'
 import { LARGE_FILE_HUNKS } from '../large-file-hunks'
 import type Types from '../types'
-import { bodyLineOf } from './body-line-of'
 import { HUNK_HEADER } from './hunk-header'
 import { isBodyLine } from './is-body-line'
 
@@ -33,10 +32,7 @@ export function parseFileDiff(stdout: string): Types.FileHunks {
       headerRows.map((at, ordinal) =>
         hunkOf(
           HUNK_HEADER.exec(rows[at] ?? '')?.groups,
-          rows
-            .slice(at + 1, headerRows[ordinal + 1])
-            .filter(isBodyLine)
-            .map(bodyLineOf),
+          rows.slice(at + 1, headerRows[ordinal + 1]).filter(isBodyLine),
         ),
       ),
     ),

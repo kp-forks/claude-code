@@ -1,4 +1,3 @@
-export * from './body-line-of'
 export * from './hunk-header'
 export * from './is-body-line'
 export * from './is-whole-answer'

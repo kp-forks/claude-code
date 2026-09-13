@@ -15,8 +15,12 @@ describe('views', () => {
     const drawn = Fixtures.textOf(await $.ui.render(Fixtures.PANE))
 
     expect(drawn).toContain('2 files changed +3 -1')
-    expect(drawn).toContain('+const a = 2')
-    expect(drawn).toContain('+export const c = 2')
+
+    expect(drawn, "a closing empty row, as the built-in's").toContain(
+      '+const a = 2\n ',
+    )
+
+    expect(drawn, 'none after the last file').toMatch(/\+export const c = 2$/)
     expect(drawn).not.toContain('❯')
   })
 

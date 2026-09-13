@@ -3,6 +3,7 @@ import { EMPTY_FILE_HUNKS } from '../empty-file-hunks'
 import Parse from '../parse'
 import type Types from '../types'
 import { isLastOfDiff } from './is-last-of-diff'
+import { withClosingLine } from './with-closing-line'
 
 /**
  * One file's hunks against the base its row was read against, so body and
@@ -10,7 +11,7 @@ import { isLastOfDiff } from './is-last-of-diff'
  *
  * An untracked, binary or renamed row (the built-in shows a rename's
  * counts, never its body), or on an unborn HEAD a file edited after
- * staging, answers no hunks; the diff's last file, no closing empty line.
+ * staging, answers no hunks; each file but the last, a closing empty row.
  *
  * @param run runs git against the pinned repository
  * @param data the fetch the row belongs to
@@ -40,7 +41,11 @@ export async function fetchFileHunks(
     file.path,
   ])
 
-  const printed = isLastOfDiff(data, file) ? stdout.replace(/\n$/, '') : stdout
+  if (exitCode !== 0) {
+    return null
+  }
 
-  return exitCode === 0 ? Parse.parseFileDiff(printed) : null
+  const body = Parse.parseFileDiff(stdout)
+
+  return isLastOfDiff(data, file) ? body : withClosingLine(body)
 }

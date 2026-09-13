@@ -5,7 +5,7 @@ import type Types from '../../types'
  * fetch: the last tracked row, the untracked ones being listed apart.
  *
  * The built-in reads that diff in one piece and trims its end, so the last
- * file alone loses git's closing empty line and the context row it becomes.
+ * file alone has no closing empty line to draw (withClosingLine).
  *
  * @param data the fetch the row belongs to
  * @param file the row
