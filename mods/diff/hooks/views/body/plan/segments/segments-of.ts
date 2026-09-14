@@ -1,5 +1,5 @@
 import { countOf } from '../../../../count-of'
-import type Git from '../../../../git'
+import Git from '../../../../git'
 import { keptOf } from '../../../../kept-of'
 import Limits from '../../../../limits'
 import type PaneState from '../../../../pane-state'
@@ -13,8 +13,8 @@ import type { DockPlan, Segment } from '../../types'
  * box): each listed file's block, a blank between, the pre-session section.
  *
  * Under an empty state whose pre-session section is open, the empty lines
- * head the body instead. A hunk carries the rows its lines take wrapped
- * past the engine's gutter at the body's width; pre-session bodies stack.
+ * head the body instead. Hunks are made printable and split under a leaf's
+ * cap (subHunksOf), each carrying the rows its lines take wrapped.
  *
  * @param model the pane's state: which file is armed, which section is open
  * @param plan the docked pane's decisions over that state
@@ -64,14 +64,27 @@ export function segmentsOf(
     }
   }
 
+  const splitOf = (hunk: Git.Hunk) =>
+    Detail.subHunksOf(
+      {
+        ...hunk,
+        lines: hunk.lines.filter(Git.isBodyLine).map(Detail.drawnLineOf),
+      },
+      Detail.MAX_CODE_CHARS,
+    )
+
   function fileOf(entry: Entries.BodyEntry): Segment[] {
     const detail = Entries.detailModelOf(entry, model)
     const notes = Detail.placeholderOf(detail)
-    const isTruncated = entry.body?.isTruncated === true
+    const splits = (entry.body?.hunks ?? []).map(splitOf)
+
+    const isTruncated =
+      entry.body?.isTruncated === true ||
+      splits.some(split => split.isTruncated)
 
     const body: Segment[] = notes
       ? notes.map(text => ({ kind: 'note', text }))
-      : (entry.body?.hunks ?? []).map(hunk => hunkOf(entry, hunk))
+      : splits.flatMap(split => split.hunks).map(hunk => hunkOf(entry, hunk))
 
     return [
       { kind: 'rule', path: entry.path },

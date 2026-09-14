@@ -4,18 +4,20 @@
 import type { RenderElement } from 'claude-code'
 
 import Limits from '../../limits'
+import Detail from '../detail'
 import type { Kit } from '../kit'
+import Layout from '../layout'
 import Sections from '../sections'
 import Plan from './plan'
-import type { BodyLayout, Segment } from './types'
+import type { BodyLayout, HunkSegment, Segment, WindowCut } from './types'
 
 /**
  * The rows of the docked body its window shows from a row down: each
  * segment drawn from the row the window cuts it at, until the window fills.
  *
- * A hunk cut by the window's top draws from the line holding that row on;
- * rows past its foot are the pane's to clip, so a few more are drawn than
- * fit (SCROLL_MARGIN_ROWS) lest a miscounted wrap leave it short.
+ * A hunk draws only its lines in view, and past MAX_BODY_CHARS of hunk
+ * text the rest waits for a scroll (the tree's cap); rows past the foot
+ * are the pane's to clip, so SCROLL_MARGIN_ROWS more are drawn than fit.
  *
  * @param kit the elements, the handlers, the width
  * @param layout the body laid out
@@ -27,7 +29,7 @@ export function drawWindow(
   layout: BodyLayout,
   top: number,
 ): RenderElement[] {
-  const { Box, Text } = kit.ui
+  const { Box, Text, Code } = kit.ui
   const drawn: RenderElement[] = []
   const wanted = layout.visibleRows + Limits.SCROLL_MARGIN_ROWS
   const at = Math.max(0, Math.min(top, layout.maxTop))
@@ -35,8 +37,25 @@ export function drawWindow(
 
   let start = 0
   let filled = 0
+  let chars = 0
 
-  function elementOf(segment: Segment, skip: number): RenderElement {
+  function codeOf(segment: HunkSegment, cut: WindowCut): RenderElement {
+    const source = Detail.hunkSourceOf(Plan.hunkWindowOf(segment, cut))
+    const path = Layout.sanitizeName(segment.path)
+    chars += source.length
+
+    const isOver = chars > Detail.MAX_BODY_CHARS
+
+    return isOver ? (
+      <Text dimColor italic>
+        …
+      </Text>
+    ) : (
+      <Code source={source} format="diff" path={path} />
+    )
+  }
+
+  function elementOf(segment: Segment, cut: WindowCut): RenderElement {
     switch (segment.kind) {
       case 'rule':
         return Sections.divider(kit)
@@ -45,7 +64,7 @@ export function drawWindow(
       case 'name':
         return Sections.nameRow(kit, segment.name)
       case 'hunk':
-        return Plan.hunkCodeOf(kit, segment, skip)
+        return codeOf(segment, cut)
       case 'note':
         return (
           <Text dimColor italic wrap="wrap">
@@ -74,7 +93,7 @@ export function drawWindow(
     if (isShown) {
       const skip = Math.max(0, at - start)
 
-      drawn.push(elementOf(segment, skip))
+      drawn.push(elementOf(segment, { skip, take: wanted - filled }))
       filled += rows - skip
     }
 
