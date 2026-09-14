@@ -11,7 +11,7 @@
  * @param dirty the paths `status` lists as dirty when the session starts
  * @returns the answers by key
  */
-export const repositoryOf = (
+export const answersOf = (
   numstat: string,
   bodies: Readonly<Record<string, string>>,
   dirty: readonly string[] = Object.keys(bodies),

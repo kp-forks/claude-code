@@ -1,11 +1,11 @@
+import { answersOf } from './answers-of.js'
 import { MANY_FILE_COUNT } from './many-file-count.js'
-import { repositoryOf } from './repository-of.js'
 
 /**
  * Git's output in /work where MANY_FILE_COUNT files changed a line each:
  * more rows than the docked list shows at once.
  */
-export const MANY_FILES = repositoryOf(
+export const MANY_FILES = answersOf(
   Array.from(
     { length: MANY_FILE_COUNT },
     (_, at) => `1\t1\tfile${at}.ts\0`,
