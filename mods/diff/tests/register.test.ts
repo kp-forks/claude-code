@@ -1,4 +1,4 @@
-import type { Args } from 'claude-code'
+import type { Args, ResultOf } from 'claude-code'
 import { describe, expect, mock, test, tier } from 'claude-code/testing'
 
 import Limits from '../hooks/limits'
@@ -8,7 +8,120 @@ import Fixtures from './fixtures'
 tier('builtin')
 
 describe('register', () => {
-  test('/diff at boot joins the boot probe, then asks again', async ($, on) => {
+  test('the start asks nothing of git and registers /diff', async ($, on) => {
+    const world = Fixtures.inRepository(on)
+
+    await $.session.start(Fixtures.SESSION)
+
+    expect(world.runs, "no git, as the built-in's start runs none").toEqual([])
+
+    expect(await $.command.run(Fixtures.DIFF), '/diff was registered').toEqual({
+      text: 'Diff panel shown',
+    })
+  })
+
+  test("git runs at the built-in's moments and no others", async ($, on) => {
+    const world = Fixtures.inRepository(on)
+
+    let read = 0
+
+    function spawnedSince(): string[] {
+      const words = world.runs
+        .slice(read)
+        .map(run => Fixtures.gitWordOf(run.argv))
+        .filter(word => word !== Fixtures.POLL_WORD)
+
+      read = world.runs.length
+
+      return words
+    }
+
+    const edit = () =>
+      $.tool.call({
+        tool: 'Edit',
+        file_path: '/work/app.ts',
+        old_string: '1',
+        new_string: '2',
+      })
+
+    on('tool.call', () => ({ result: 'done' }))
+    on('turn.complete', ($, e) => ({ text: e.answer }))
+    on('command.run', { command: 'clear' }, () => ({}))
+
+    await $.session.start(Fixtures.SESSION)
+    await $.ui.render(Fixtures.hintAt(Limits.AUTO_OPEN_MIN_COLUMNS - 1))
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(spawnedSince(), 'the start and the footer: nothing').toEqual([])
+
+    await edit()
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(
+      spawnedSince(),
+      'an edit with no room for a pane: nothing, the width is read first',
+    ).toEqual([])
+
+    await $.command.run(Fixtures.DIFF)
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(spawnedSince(), '/diff: found, then one fetch for the pane').toEqual(
+      [
+        'rev-parse --show-toplevel',
+        'status',
+        'diff --shortstat',
+        'diff --numstat',
+        'ls-files',
+        'diff -- app.ts',
+      ],
+    )
+
+    await edit()
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(spawnedSince(), 'an edit, the pane open: one fetch').toEqual([
+      'diff --shortstat',
+      'diff --numstat',
+      'ls-files',
+      'diff -- app.ts',
+    ])
+
+    await $.tool.call({ tool: 'Bash', command: 'make' })
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(spawnedSince(), 'a shell command, the pane open: one fetch').toEqual(
+      ['diff --shortstat', 'diff --numstat', 'ls-files', 'diff -- app.ts'],
+    )
+
+    await $.turn.complete({
+      answer: 'done',
+      durationMs: 1,
+      isAborted: false,
+      turnId: 't1',
+      reason: 'answer',
+    })
+
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(spawnedSince(), "a turn's end: nothing").toEqual([])
+
+    await $.command.run(Fixtures.DIFF)
+    await edit()
+    await $.tool.call({ tool: 'Bash', command: 'make' })
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(spawnedSince(), 'the pane closed by hand: nothing').toEqual([])
+
+    await $.command.run(Fixtures.CLEAR)
+    await $.command.run(Fixtures.DIFF)
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(spawnedSince()[0], '/clear forgot the repository').toBe(
+      'rev-parse --show-toplevel',
+    )
+  })
+
+  test('/diff whose probe never answers probes once more', async ($, on) => {
     const probes: (readonly string[])[] = []
     const clock = Fixtures.startsSession(on)
 
@@ -24,24 +137,40 @@ describe('register', () => {
       return { value: Fixtures.NOT_A_REPOSITORY }
     })
 
-    const booting = $.session.start(Fixtures.SESSION)
-
-    await clock.settle()
+    await $.session.start(Fixtures.SESSION)
 
     const ran = $.command.run(Fixtures.DIFF)
 
     await clock.settle()
 
-    expect(probes, 'the boot probe, which /diff joined').toHaveLength(1)
+    expect(probes, "this /diff's probe, unanswered yet").toHaveLength(1)
 
     await clock.advance(Limits.GIT_TIMEOUT_MS)
-    await booting
 
     expect(await ran).toEqual({
       text: expect.stringContaining("isn't in a git repository"),
     })
 
-    expect(probes, 'then one more of its own').toHaveLength(2)
+    expect(probes, 'then one more, which answered').toHaveLength(2)
+  })
+
+  test('two /diff typed together probe the repository once', async ($, on) => {
+    const world = Fixtures.inRepository(on)
+
+    await $.session.start(Fixtures.SESSION)
+
+    const [first, second] = await Promise.all([
+      $.command.run(Fixtures.DIFF),
+      $.command.run(Fixtures.DIFF),
+    ])
+
+    const probes = world.runs.filter(run =>
+      run.argv.includes('--show-toplevel'),
+    )
+
+    expect(first.text).toMatch(/^Diff panel (shown|hidden)$/)
+    expect(second.text).toMatch(/^Diff panel (shown|hidden)$/)
+    expect(probes, 'the second joined the probe in flight').toHaveLength(1)
   })
 
   test('outside a repository /diff says so, opens nothing', async ($, on) => {
@@ -77,11 +206,19 @@ describe('register', () => {
 
   test('when the built-in holds /diff, the mod stands down', async ($, on) => {
     const logged: string[] = []
+    const runs: Args<'process.run'>[] = []
 
     mock.clock(on)
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     on('command.register', () => ({ deny: Fixtures.BUILTIN_HOLDS }))
     on('command.run', () => ({ text: 'the built-in /diff ran' }))
+    on('tool.call', () => ({ result: 'edited' }))
+
+    on('process.run', ($, e) => {
+      runs.push(e)
+
+      return { value: Fixtures.gitIn(e.argv) }
+    })
 
     on('ui.log', ($, e) => {
       logged.push(e.text)
@@ -95,7 +232,15 @@ describe('register', () => {
       text: 'the built-in /diff ran',
     })
 
+    await $.tool.call({
+      tool: 'Edit',
+      file_path: '/work/app.ts',
+      old_string: '1',
+      new_string: '2',
+    })
+
     expect(logged).toEqual([])
+    expect(runs, 'idle: no git for /diff or the edit').toEqual([])
   })
 
   test('a refusal the built-in did not cause is said aloud', async ($, on) => {
@@ -127,9 +272,15 @@ describe('register', () => {
 
     await $.session.start(Fixtures.SESSION)
 
+    expect(world.runs, 'the start ran nothing').toEqual([])
+
     expect(await $.command.run(Fixtures.DIFF)).toEqual({
       text: 'Diff panel shown',
     })
+
+    expect(world.runs[0]?.argv, '/diff found the repository first').toContain(
+      '--show-toplevel',
+    )
 
     expect(world.opened).toEqual([
       { id: 'diff', title: 'Diff', holdToasts: true },
@@ -195,6 +346,42 @@ describe('register', () => {
     await world.clock.advance(Fixtures.SETTLE_MS)
 
     expect(world.opened.map(pane => pane.id)).toEqual(['diff'])
+  })
+
+  test('an edit that failed or was refused opens nothing', async ($, on) => {
+    const world = Fixtures.inRepository(on)
+
+    const answers: ResultOf['tool.call'][] = [
+      { isError: true, result: 'no such text' },
+      { deny: 'not allowed' },
+    ]
+
+    const edit = () =>
+      $.tool.call({
+        tool: 'Edit',
+        file_path: '/work/app.ts',
+        old_string: '1',
+        new_string: '2',
+      })
+
+    on('tool.call', () => answers.shift() ?? { result: 'edited' })
+
+    await $.session.start(Fixtures.SESSION)
+    await $.ui.render(Fixtures.HINT)
+    await edit()
+    await edit()
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(world.opened, 'neither edit landed').toEqual([])
+    expect(world.runs, 'so nothing asked after the repository').toEqual([])
+
+    await edit()
+    await world.clock.advance(Fixtures.SETTLE_MS)
+
+    expect(
+      world.opened.map(pane => pane.id),
+      'the third did',
+    ).toEqual(['diff'])
   })
 
   test('/clear closes the pane it finds open', async ($, on) => {
@@ -290,18 +477,28 @@ describe('register', () => {
     ).toContain('uncommitted (vs HEAD)')
   })
 
-  test('a repository made later is pinned once, on /diff', async ($, on) => {
+  test('no repository is an answer kept until /clear', async ($, on) => {
     const { 'rev-parse --path-format=absolute': worktree = '', ...notYet } =
       Fixtures.oneSecret()
 
     const script: Record<string, string> = notYet
     const world = Fixtures.inRepository(on, script)
 
+    const probesOf = () =>
+      world.runs.filter(run => run.argv.includes('--show-toplevel')).length
+
+    on('command.run', { command: 'clear' }, () => ({}))
+
     await $.session.start(Fixtures.WORKTREE_SESSION)
 
     const before = await $.command.run(Fixtures.DIFF)
 
     script['rev-parse --path-format=absolute'] = worktree
+
+    const again = await $.command.run(Fixtures.DIFF)
+    const probesKept = probesOf()
+
+    await $.command.run(Fixtures.CLEAR)
 
     const after = await $.command.run(Fixtures.DIFF)
 
@@ -315,14 +512,16 @@ describe('register', () => {
     await world.clock.advance(Fixtures.SETTLE_MS)
     await third
 
-    const probes = world.runs.filter(run =>
-      run.argv.includes('--show-toplevel'),
+    expect(before.text).toContain("isn't in a git repository")
+
+    expect(again.text, "kept, as the built-in's answer is").toContain(
+      "isn't in a git repository",
     )
 
-    expect(before.text).toContain("isn't in a git repository")
-    expect(after.text).toBe('Diff panel shown')
+    expect(probesKept, 'one probe answered both').toBe(1)
+    expect(after.text, '/clear forgot it').toBe('Diff panel shown')
     expect(world.opened[0]?.id).toBe('diff')
-    expect(probes).toHaveLength(3)
+    expect(probesOf(), 'then one more, pinned from there on').toBe(2)
 
     expect(
       world.runs.some(run => run.argv.includes('--git-dir=/else/.git')),
@@ -380,7 +579,7 @@ describe('register', () => {
     const probes = runs.filter(run => run.argv.includes('--show-toplevel'))
 
     expect(text).toContain("isn't in a git repository")
-    expect(probes, "the boot's, then this /diff's; no retry").toHaveLength(2)
+    expect(probes, "this /diff's alone; no retry").toHaveLength(1)
   })
 
   test('/diff on a narrow terminal: the resize line', async ($, on) => {
