@@ -927,9 +927,7 @@ export function register(on: On) {
       result.deny === undefined &&
       result.isError !== true
 
-    const hasLanded = isEdit
-      ? hasEdited
-      : result === undefined || result.deny === undefined
+    const hasLanded = isEdit ? hasEdited : Tools.mayHaveWritten(result)
 
     if (hasLanded) {
       landed += 1
