@@ -455,4 +455,366 @@ describe('register', () => {
       })
     },
   )
+
+  test(
+    'a deny rule holds over an allow from a plugin the person installed',
+    { plugins: [Fixtures.allowing('easy')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+
+      expect(lines).toEqual([
+        `transcript: ${Hooks.heldNotice('easy', 'Bash', 'Bash(echo *)')}`,
+      ])
+    },
+  )
+
+  test(
+    'two plugins of the person chained are each named once in a session',
+    {
+      plugins: [Fixtures.allowing('first'), Fixtures.asking('second')],
+    },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+
+      expect(lines.toSorted()).toEqual([
+        `transcript: ${Hooks.heldNotice('first', 'Bash', 'Bash(echo *)')}`,
+        `transcript: ${Hooks.heldNotice('second', 'Bash', 'Bash(echo *)')}`,
+      ])
+    },
+  )
+
+  test(
+    'a deny rule turned into an ask by a plugin of the person holds too',
+    { plugins: [Fixtures.asking('easy')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+      Fixtures.logged(on)
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+    },
+  )
+
+  test(
+    "an organization plugin's allow over a deny rule stands, above or below",
+    {
+      plugins: [
+        Fixtures.allowing('suite', 'append'),
+        Fixtures.allowing('easy'),
+      ],
+    },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.ALLOWED)
+      expect(lines).toEqual([])
+    },
+  )
+
+  test(
+    "a prepended organization plugin's allow over a deny rule stands",
+    { plugins: [Fixtures.allowing('guard', 'prepend')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.ALLOWED)
+      expect(lines).toEqual([])
+    },
+  )
+
+  test(
+    "a built-in's allow over a deny rule stands",
+    { plugins: [Fixtures.allowing('bundled', 'builtin')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.ALLOWED)
+      expect(lines).toEqual([])
+    },
+  )
+
+  test(
+    'an ask a plugin of the person allows, no deny rule behind it, stands',
+    { plugins: [Fixtures.allowing('easy')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.ASKED)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.ALLOWED)
+      expect(lines).toEqual([])
+    },
+  )
+
+  test(
+    'a deny no rule decided is still theirs to answer over',
+    { plugins: [Fixtures.allowing('easy')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.PLAIN_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.ALLOWED)
+      expect(lines).toEqual([])
+    },
+  )
+
+  test(
+    'a plugin of the person that tightens is heard, with one evaluation',
+    { plugins: [Fixtures.tightening] },
+    async ($, on) => {
+      const reads = Fixtures.policyReads(on, Fixtures.MANAGED_POLICY)
+      const evaluations = Fixtures.checksAnswered(on, Fixtures.ASKED)
+
+      await $.tool.check(Fixtures.CHECKED)
+
+      const loaded = { reads: reads(), evaluations: evaluations() }
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.PLAIN_DENY)
+
+      expect(
+        {
+          reads: reads() - loaded.reads,
+          evaluations: evaluations() - loaded.evaluations,
+        },
+        'once its plugins have loaded, a check reads no policy',
+      ).toEqual({ reads: 0, evaluations: 1 })
+    },
+  )
+
+  test(
+    "a deny rule holds when an organization's plugin listens above theirs",
+    {
+      plugins: [
+        Fixtures.listening('audit', 'prepend'),
+        Fixtures.allowing('easy'),
+      ],
+    },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+
+      expect(
+        lines.map(line => line.includes('easy')),
+        'one line, naming the plugin of theirs, alone or in its batch',
+      ).toEqual([true])
+    },
+  )
+
+  test(
+    'a plugin of the person that only listens costs no second evaluation',
+    { plugins: [Fixtures.listening('listening')] },
+    async ($, on) => {
+      const reads = Fixtures.policyReads(on, Fixtures.MANAGED_POLICY)
+      const evaluations = Fixtures.checksAnswered(on, Fixtures.ASKED)
+
+      await $.tool.check(Fixtures.CHECKED)
+
+      const loaded = { reads: reads(), evaluations: evaluations() }
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.ASKED)
+
+      expect(
+        {
+          reads: reads() - loaded.reads,
+          evaluations: evaluations() - loaded.evaluations,
+        },
+        'once its plugins have loaded, a check reads no policy',
+      ).toEqual({ reads: 0, evaluations: 1 })
+    },
+  )
+
+  test('with none of their plugins the verdict passes once', async ($, on) => {
+    const reads = Fixtures.policyReads(on, Fixtures.MANAGED_POLICY)
+    const evaluations = Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+    expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+
+    expect({ reads: reads(), evaluations: evaluations() }).toEqual({
+      reads: 0,
+      evaluations: 1,
+    })
+  })
+
+  test(
+    'an allow that never called next meets the deny rule all the same',
+    { plugins: [Fixtures.blindAllowing] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+      const evaluations = Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+
+      expect({ lines, evaluations: evaluations() }).toEqual({
+        lines: [
+          `transcript: ${Hooks.heldNotice('blind', 'Bash', 'Bash(echo *)')}`,
+        ],
+        evaluations: 1,
+      })
+    },
+  )
+
+  test(
+    'a rule a plugin of the person writes into its answer is never read',
+    { plugins: [Fixtures.forging] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+
+      const lines = Fixtures.logged(on)
+
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+
+      expect(lines).toEqual([
+        `transcript: ${Hooks.heldNotice('forging', 'Bash', 'Bash(echo *)')}`,
+      ])
+    },
+  )
+
+  test(
+    'a plugin of the person asking about another command is left out',
+    { plugins: [Fixtures.rewriting] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+      Fixtures.logged(on)
+
+      const asked: unknown[] = []
+
+      on('tool.check', ($, e) => {
+        asked.push(e.input)
+
+        return Fixtures.RULE_DENY
+      })
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+
+      expect(
+        asked,
+        'the rules were asked about the command that would run, only',
+      ).toEqual([Fixtures.CHECKED.input])
+    },
+  )
+
+  test(
+    'managed settings may let the plugins a person installs override',
+    { plugins: [Fixtures.allowing('easy')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.overridePolicyOf(true) }))
+
+      const lines = Fixtures.logged(on)
+      const evaluations = Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.ALLOWED)
+
+      expect({ lines, evaluations: evaluations() }).toEqual({
+        lines: [],
+        evaluations: 1,
+      })
+    },
+  )
+
+  test(
+    "only managed settings are asked: a person's own cannot lift a deny rule",
+    { plugins: [Fixtures.allowing('easy')] },
+    async ($, on) => {
+      Fixtures.policyBySource(
+        on,
+        Fixtures.MANAGED_POLICY,
+        Fixtures.overridePolicyOf(true),
+      )
+
+      Fixtures.logged(on)
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+    },
+  )
+
+  test(
+    'the option mistyped lifts nothing: only the literal true does',
+    { plugins: [Fixtures.allowing('easy')] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.overridePolicyOf('true') }))
+      Fixtures.logged(on)
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Fixtures.RULE_DENY)
+    },
+  )
+
+  test(
+    'with a policy that cannot be read the deny rule holds: fails closed',
+    { plugins: [Fixtures.allowing('easy')] },
+    async ($, on) => {
+      const stopPolicy = Fixtures.policyUntilStopped(
+        on,
+        Fixtures.overridePolicyOf(true),
+        'managed settings unreadable',
+      )
+
+      Fixtures.logged(on)
+      Fixtures.checksAnswered(on, Fixtures.RULE_DENY)
+      on('prompt.section', ($, e) => ({ text: e.text }))
+
+      await $.prompt.section(Fixtures.MEMORY)
+      stopPolicy()
+
+      expect(
+        await $.tool.check(Fixtures.CHECKED),
+        'the policy that read let plugins override; unread, the rule holds',
+      ).toEqual(Fixtures.RULE_DENY)
+    },
+  )
+
+  test(
+    "when the rules cannot be evaluated the call is refused: the hook's catch",
+    { plugins: [Fixtures.blindAllowing] },
+    async ($, on) => {
+      on('settings.read', () => ({ value: Fixtures.MANAGED_POLICY }))
+      Fixtures.logged(on)
+
+      on('tool.check', () => {
+        throw new Error('the evaluation failed')
+      })
+
+      expect(await $.tool.check(Fixtures.CHECKED)).toEqual(Hooks.UNCHECKED_DENY)
+    },
+  )
 })

@@ -1,5 +1,6 @@
 export * from './create-policy-memo'
 export * from './decided-by-policy.js'
+export * from './deny-rules-hold.js'
 export * from './has-mcp-allowlist.js'
 export * from './is-managed-mods-only.js'
 export * from './managed-tools-restored'
